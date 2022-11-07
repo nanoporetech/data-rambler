@@ -1,0 +1,34 @@
+{
+	"compilerOptions": {
+		"declaration": true,
+		"declarationMap": true,
+		"sourceMap": true,
+		"outDir": "dist",
+		"lib": ["es2020"],
+		"removeComments": true,
+		"target": "es2018",
+		"strict": true,
+		"noUnusedLocals": true,
+		"noUnusedParameters": true,
+		"noImplicitReturns": true,
+		"noFallthroughCasesInSwitch": true,
+		"noImplicitOverride": true,
+		"noImplicitThis": true,
+		"noPropertyAccessFromIndexSignature": true,
+		"noUncheckedIndexedAccess": true,
+		"allowUnreachableCode": false,
+		"allowUnusedLabels": false,
+		"exactOptionalPropertyTypes": true,
+		"forceConsistentCasingInFileNames": true,
+		"importsNotUsedAsValues": "error",
+		"esModuleInterop": true,
+		"moduleResolution": "node",
+		"resolveJsonModule": true
+	},
+	"include": [
+		"src"
+	],
+	"exclude": [
+		"**/*.test.ts"
+	]
+}

@@ -15,6 +15,8 @@ export { parse_expression } from './parser/expression';
 export { parse } from './parser/parser';
 export { scan } from './scanner/scanner';
 
+export type { Input, Output, Listener } from './runtime/Emitter.type';
+
 export function evaluate_module(runtime: Runtime, source: string): void {
   const tokens = scan(source);
   const ast = parse(tokens);

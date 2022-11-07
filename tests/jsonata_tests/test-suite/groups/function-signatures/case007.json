@@ -1,0 +1,6 @@
+{
+    "expr": "fn($str)<s->{$uppercase($str)}(\"hello\")",
+    "dataset": null,
+    "bindings": {},
+    "result": "HELLO"
+}

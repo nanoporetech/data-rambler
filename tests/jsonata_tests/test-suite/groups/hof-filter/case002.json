@@ -1,0 +1,6 @@
+{
+    "expr": "$filter(data, fn($d) { true })",
+    "data": {"data": 5},
+    "bindings": {},
+    "result": 5
+}

@@ -1,0 +1,18 @@
+{
+    "expr": "$tempReadings := $count(state.tempReadings) = 5 ? [state.tempReadings[1..4], event.t] : [state.tempReadings, event.t], { \"tempReadings\": $tempReadings, \"sumTemperatures\": $sum($tempReadings), \"avgTemperature\": $average($tempReadings) ~> $round, \"maxTemperature\": $max($tempReadings), \"minTemperature\": $min($tempReadings) }",
+    "dataset": "dataset18",
+    "bindings": {},
+    "result": {
+        "tempReadings": [
+            28.9,
+            28,
+            28.2,
+            28.4,
+            28.4
+        ],
+        "sumTemperatures": 141.9,
+        "avgTemperature": 28,
+        "maxTemperature": 28.9,
+        "minTemperature": 28
+    }
+}

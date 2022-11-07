@@ -1,0 +1,8 @@
+$each(jsonata, fn($v, $k){
+{
+  'date': $k,
+  'count': $v
+}
+}){
+  $substring(date, 0, 7): $sum(count)
+}

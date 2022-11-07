@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <style>
+      html {
+        height: 100%;
+      }
+      body {
+        height: 100%;
+        margin: 0;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: 3rem 1fr 2fr;
+      }
+      .header {
+        grid-column: 1 / 3;
+        grid-row: 1;
+        background-color: rgb(0 142 171);
+      }
+      .json-pane {
+        grid-column: 1;
+        grid-row: 2 / 4;
+        background-color: rgb(255, 255, 245);
+        border-right: 2px solid rgb(0 142 171);
+        overflow: auto;
+        padding: 1rem;
+        box-sizing: border-box; 
+        outline: none;
+        font-family: monospace;
+        white-space: pre;
+      }
+      .expression-pane {
+        grid-column: 2;
+        grid-row: 2;
+        background-color: rgb(255, 255, 245);
+        border-bottom: 2px solid rgb(0 142 171);
+        overflow: auto;
+        padding: 1rem;
+        box-sizing: border-box;
+        outline: none;
+        font-family: monospace;
+        white-space: pre;
+      }
+      .output-pane {
+        grid-column: 2;
+        grid-row: 3;
+        background-color: lightgrey;
+        overflow: auto;
+        padding: 1rem;
+        box-sizing: border-box;
+        font-family: monospace;
+        white-space: pre;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header"></div>
+    <div class="json-pane" contenteditable>
+      {
+        "Account": {
+          "Account Name": "Firefly",
+          "Order": [
+            {
+              "OrderID": "order103",
+              "Product": [
+                {
+                  "Product Name": "Bowler Hat",
+                  "ProductID": 858383,
+                  "SKU": "0406654608",
+                  "Description": {
+                    "Colour": "Purple",
+                    "Width": 300,
+                    "Height": 200,
+                    "Depth": 210,
+                    "Weight": 0.75
+                  },
+                  "Price": 34.45,
+                  "Quantity": 2
+                },
+                {
+                  "Product Name": "Trilby hat",
+                  "ProductID": 858236,
+                  "SKU": "0406634348",
+                  "Description": {
+                    "Colour": "Orange",
+                    "Width": 300,
+                    "Height": 200,
+                    "Depth": 210,
+                    "Weight": 0.6
+                  },
+                  "Price": 21.67,
+                  "Quantity": 1
+                }
+              ]
+            },
+            {
+              "OrderID": "order104",
+              "Product": [
+                {
+                  "Product Name": "Bowler Hat",
+                  "ProductID": 858383,
+                  "SKU": "040657863",
+                  "Description": {
+                    "Colour": "Purple",
+                    "Width": 300,
+                    "Height": 200,
+                    "Depth": 210,
+                    "Weight": 0.75
+                  },
+                  "Price": 34.45,
+                  "Quantity": 4
+                },
+                {
+                  "ProductID": 345664,
+                  "SKU": "0406654603",
+                  "Product Name": "Cloak",
+                  "Description": {
+                    "Colour": "Black",
+                    "Width": 30,
+                    "Height": 20,
+                    "Depth": 210,
+                    "Weight": 2
+                  },
+                  "Price": 107.99,
+                  "Quantity": 1
+                }
+              ]
+            }
+          ]
+        }
+      }
+    </div>
+    <div class="expression-pane" contenteditable>
+      Account.Order.Product.(Price * Quantity)
+    </div>
+    <div class="output-pane"></div>
+    <script type="module">
+      import { prepare_expression, scan, Runtime } from './mjs/index.mjs';
+
+      const json_pane = document.querySelector('.json-pane');
+      const expression_pane = document.querySelector('.expression-pane');
+      const output_pane = document.querySelector('.output-pane');
+
+      const runtime = new Runtime;
+
+      function update () {
+        const expr_source = expression_pane.textContent;
+
+        let expr;
+        try {
+          expr = prepare_expression(runtime, expr_source);
+        } catch (e) {
+          output_pane.textContent = e.message;
+          return;
+        }
+
+        let data;
+        try {
+          data = JSON.parse(json_pane.textContent);
+        } catch {
+          output_pane.textContent = 'Invalid JSON';
+          return;
+        }
+
+        let result;
+        try {
+          result = expr(data);
+        } catch (e) {
+          output_pane.textContent = e.message;
+          return;
+        }
+
+        if (result === undefined) {
+          output_pane.textContent = 'No match';
+        } else {
+          output_pane.textContent = JSON.stringify(result, null, 2);
+        }
+      }
+
+      json_pane.addEventListener('input', () => {
+        update();
+      });
+      expression_pane.addEventListener('input', () => {
+        update();
+      });
+
+      update();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,6 @@
+{
+    "expr": "($twice:=fn($f){fn($x){$f($f($x))}}, $add3:=fn($y){$y+3}, $add6:=$twice($add3), $add6(7))",
+    "data": null,
+    "bindings": {},
+    "result": 13
+}

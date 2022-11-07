@@ -1,0 +1,6 @@
+{
+    "expr": "($fun := fn($arr)<a<n>>{$arr},$fun(\"f\"))",
+    "dataset": null,
+    "bindings": {},
+    "code": "T0412"
+}

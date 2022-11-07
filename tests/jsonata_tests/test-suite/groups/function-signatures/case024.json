@@ -1,0 +1,6 @@
+{
+    "expr": "($twice := fn($f)<f:f>{fn($x)<n:n>{$f($f($x))}},$add2 := fn($x)<n:n>{$x+2},$add4 := $twice($add2),$add4(5))",
+    "dataset": null,
+    "bindings": {},
+    "result": 9
+}

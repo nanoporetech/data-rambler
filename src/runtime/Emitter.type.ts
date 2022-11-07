@@ -1,4 +1,4 @@
-import type { SimpleValue } from "../SimpleValue.type";
+import type { SimpleValue } from '../SimpleValue.type';
 
 export type VoidFunction = () => void;
 export type Listener<T = SimpleValue> = (value: T) => void;

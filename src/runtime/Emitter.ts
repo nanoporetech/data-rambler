@@ -1,5 +1,5 @@
-import type { SimpleObject, SimpleValue } from "../SimpleValue.type";
-import type { Input, Listener, Output, VoidFunction } from "./Emitter.type";
+import type { SimpleObject, SimpleValue } from '../SimpleValue.type';
+import type { Input, Listener, Output, VoidFunction } from './Emitter.type';
 
 export class Emitter implements Input, Output {
   private subscribers: Set<Listener> = new Set();
@@ -22,21 +22,24 @@ export class Emitter implements Input, Output {
     }
   }
 
-  static combine (sources: Record<string, Emitter>): Output<SimpleObject> {
+  static Combine (sources: Record<string, Emitter>): Output<SimpleObject> {
     const listeners = new Set<Listener<SimpleObject>>();
-    let combined_value: Record<string, SimpleValue> = {};
+    const combined_value: Record<string, SimpleValue> = {};
     let disposer: VoidFunction | null = null;
   
     const subscribe = () => {
       const disposers = Object.entries(sources).map(([name, src]) => src.watch(value => {
+        // TODO we could resolve promises here
         if (combined_value[name] === value) {
           return;
         }
         combined_value[name] = value;
         for (const fn of listeners) {
           try {
-          fn(combined_value);
-          } catch {}
+            fn(combined_value);
+          } catch {
+            // NOTE discard errors, we can't do much with them
+          }
         }
       }));
   
@@ -49,7 +52,9 @@ export class Emitter implements Input, Output {
       }
       try {
         listener(combined_value);
-      } catch {}
+      } catch {
+        // NOTE discard errors, we can't do much with them
+      }
       listeners.add(listener);
       return () => {
         listeners.delete(listener);
@@ -57,7 +62,7 @@ export class Emitter implements Input, Output {
           disposer();
           disposer = null;
         }
-      }
+      };
     };
   
     return { watch };

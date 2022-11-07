@@ -1,4 +1,4 @@
-import type { Range } from "./Range";
+import type { Range } from './Range';
 
 export type SimpleValue = string | null | number | boolean | undefined | SimpleArray | SimpleObject | SimpleFunction | Range;
 export type SimpleArray = Array<SimpleValue>;

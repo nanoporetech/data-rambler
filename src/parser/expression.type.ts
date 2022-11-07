@@ -1,5 +1,5 @@
-import type { JSONValue } from "../JSON.type";
-import type { Position } from "../scanner/Position.type";
+import type { JSONValue } from '../JSON.type';
+import type { Position } from '../scanner/Position.type';
 
 export interface ExpressionBase<T extends `${string}_expression`> {
   type: T;
@@ -115,7 +115,7 @@ export interface SimplePrefixExpression extends ExpressionBase<'negate_expressio
   expression: Expression;
 }
 
-export interface SymbolExpression extends ExpressionBase<'wildcard_expression' | 'descendant_expression' | 'parent_expression'> {}
+export type SymbolExpression = ExpressionBase<'wildcard_expression' | 'descendant_expression' | 'parent_expression'>
 
 export interface GroupExpression extends ExpressionBase<'group_expression'> {
   expression: Expression | undefined;

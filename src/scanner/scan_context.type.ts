@@ -1,9 +1,9 @@
 export interface ScanContext {
-	readonly source: string[];
+  readonly source: string[];
 
-	index: number;
-	readonly length: number;
+  index: number;
+  readonly length: number;
 
-	column: number;
-	row: number;
+  column: number;
+  row: number;
 }

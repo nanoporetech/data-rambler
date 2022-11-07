@@ -50,6 +50,14 @@ module.exports = {
         modifiers: ['destructured'],
         format: null,
       },
+      // allow unused variables with a underscore prefix
+      {
+        selector: ['variableLike'],
+        modifiers: ['unused'],
+        format: ['camelCase'],
+        leadingUnderscore: 'require',
+        trailingUnderscore: 'forbid'
+      },
       // all other variables should be snake_case
       {
         selector: ['variableLike'],

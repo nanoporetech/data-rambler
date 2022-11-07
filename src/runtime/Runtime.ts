@@ -1,6 +1,6 @@
-import type { SimpleFunction, SimpleValue } from "../SimpleValue.type";
-import type { Emitter } from "./Emitter";
-import type { Environment } from "./Runtime.type";
+import type { SimpleFunction, SimpleValue } from '../SimpleValue.type';
+import type { Emitter } from './Emitter';
+import type { Environment } from './Runtime.type';
 
 import { functions } from './functions';
 
@@ -13,7 +13,7 @@ export class Runtime {
   };
 
   private get top(): Environment {
-    return this.scope[0];
+    return this.scope[0]!;
   }
   push_scope (): void {
     this.scope.unshift({});
@@ -22,7 +22,7 @@ export class Runtime {
     this.scope.shift();
   }
   declare_input (symbol: string, source: Emitter): void {
-    if (symbol in this.inputs.symbol) {
+    if (symbol in this.inputs) {
       throw new Error(`SyntaxError: Identifier '${symbol}' has already been declared`);
     }
     this.inputs[symbol] = source;

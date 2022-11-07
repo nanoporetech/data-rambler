@@ -9,7 +9,7 @@ import type { Sequence } from '../sequence.type';
 import type { ArrayExpression, Expression, FieldExpression, FunctionExpression, GroupExpression, IdentifierExpression, JSONExpression, ObjectExpression, SimplePrefixExpression, SymbolExpression } from '../expression.type';
 
 export function parse_expression_sequence (ctx: ParserContext, delimiter: [string, string], precedence = 0): Sequence<Expression> {
-	return parse_sequence(ctx, delimiter, ctx => parse_expression(ctx, precedence));
+  return parse_sequence(ctx, delimiter, ctx => parse_expression(ctx, precedence));
 }
 
 export function parse_json_expression(ctx: ParserContext): JSONExpression {
@@ -211,7 +211,7 @@ export function parse_group_expression(ctx: ParserContext): GroupExpression {
     start,
     end,
     expression,
-  }
+  };
 }
 
 export function parse_json_value(ctx: ParserContext): JSONValue {
@@ -232,7 +232,7 @@ export function parse_json_value(ctx: ParserContext): JSONValue {
     }
   }
   if (type === 'identifier') {
-    consume_token(ctx)
+    consume_token(ctx);
     if (value === 'true' || value === 'false') {
       return value === 'true';
     }
@@ -251,7 +251,7 @@ export function parse_json_value(ctx: ParserContext): JSONValue {
 }
 
 export function parse_json_object(ctx: ParserContext): JSONObject {
-  return Object.fromEntries(parse_sequence(ctx, [ '{', '}' ], ctx => {
+  return Object.fromEntries(parse_sequence(ctx, [ '{', '}' ], (ctx): [string, JSONValue] => {
     const key = match_token(ctx, 'string') ? consume_token(ctx).value : ensure_token(ctx, 'identifier').value;
     const value = parse_json_value(ctx);
     return [key, value];

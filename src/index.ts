@@ -11,39 +11,39 @@ import type { Output } from './runtime/Emitter.type';
 import type { SimpleObject, SimpleValue } from './SimpleValue.type';
 
 export { Runtime } from './runtime/Runtime';
-export { parse_expression } from "./parser/expression";
-export { parse } from "./parser/parser";
-export { scan } from "./scanner/scanner";
+export { parse_expression } from './parser/expression';
+export { parse } from './parser/parser';
+export { scan } from './scanner/scanner';
 
 export function evaluate_module(runtime: Runtime, source: string): void {
-    const tokens = scan(source);
-    const ast = parse(tokens);
+  const tokens = scan(source);
+  const ast = parse(tokens);
   
-    evaluate_block(runtime, ast);
-  }
+  evaluate_block(runtime, ast);
+}
   
-  export function evaluate_expression(runtime: Runtime, source: string): Output {
-    const tokens = scan(source);
-    const ctx = create_parser_context(tokens);
-    const ast = parse_expression(ctx);
+export function evaluate_expression(runtime: Runtime, source: string): Output {
+  const tokens = scan(source);
+  const ctx = create_parser_context(tokens);
+  const ast = parse_expression(ctx);
 
-    const remaining = peek_token(ctx);
-    if (remaining) {
-        unexpected_token(remaining.value);
-    }
-  
-    return create_expression_stream(runtime, ast);
+  const remaining = peek_token(ctx);
+  if (remaining) {
+    unexpected_token(remaining.value);
   }
   
-  export function prepare_expression(runtime: Runtime, source: string): (value: SimpleValue, bindings: SimpleObject) => SimpleValue {
-    const tokens = scan(source);
-    const ctx = create_parser_context(tokens);
-    const expr = parse_expression(ctx);
+  return create_expression_stream(runtime, ast);
+}
+  
+export function prepare_expression(runtime: Runtime, source: string): (value: SimpleValue, bindings: SimpleObject) => SimpleValue {
+  const tokens = scan(source);
+  const ctx = create_parser_context(tokens);
+  const expr = parse_expression(ctx);
 
-    const remaining = peek_token(ctx);
-    if (remaining) {
-        unexpected_token(remaining.value);
-    }
-  
-    return (value = undefined, bindings = {}) => eval_root_expr(runtime, expr, value, bindings);
+  const remaining = peek_token(ctx);
+  if (remaining) {
+    unexpected_token(remaining.value);
   }
+  
+  return (value = undefined, bindings = {}) => eval_root_expr(runtime, expr, value, bindings);
+}

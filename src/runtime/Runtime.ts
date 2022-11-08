@@ -15,9 +15,17 @@ export class Runtime {
   private get top(): Environment {
     return this.scope[0]!;
   }
+  /**
+   * @package
+   * Used internally for module level scopes
+   */
   push_scope (): void {
     this.scope.unshift({});
   }
+  /**
+   * @package
+   * Used internally for module level scopes
+   */
   pop_scope (): void {
     this.scope.shift();
   }
@@ -39,6 +47,16 @@ export class Runtime {
       throw new Error(`SyntaxError: Identifier '${symbol}' has already been declared`);
     }
     top[symbol] = source;
+  }
+  declare_function (symbol: string, _type: string, fn: SimpleFunction): void {
+    // TODO we actually need to parse the type and store it somewhere
+    this.declare_global(symbol, fn);
+  }
+  declare_global (symbol: string, value: SimpleValue): void {
+    if (symbol in this.globals) {
+      throw new Error(`SyntaxError: Identifier '${symbol}' has already been declared`);
+    }
+    this.globals[symbol] = value;
   }
   resolve_source (symbol: string): Emitter | null {
     for (const scope of this.scope) {

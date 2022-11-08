@@ -16,6 +16,8 @@ export { parse } from './parser/parser';
 export { scan } from './scanner/scanner';
 
 export type { Input, Output, Listener } from './runtime/Emitter.type';
+export type { SimpleValue, SimpleFunction, SimpleArray, SimpleObject } from './SimpleValue.type';
+export type { JSONValue, JSONArray, JSONObject } from './JSON.type';
 
 export function evaluate_module(runtime: Runtime, source: string): void {
   const tokens = scan(source);

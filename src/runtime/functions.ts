@@ -161,5 +161,5 @@ def('format', '', (p0: string | undefined, p1: unknown[]) => {
   if (p0 === un) {
     return un;
   }
-  return p0.replace(/$\{([0-9]*)\}/g, (_, v, i) => stringify(p1[+v ?? i]) ?? '');
+  return p0.replace(/\$\{([0-9]*)\}/g, (_, v, i) => stringify(p1[+v ?? i]) ?? '');
 });

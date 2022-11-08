@@ -56,8 +56,7 @@ function keys (p0: SimpleValue): string[] {
 }
 
 def('keys', 'x:a<s>', keys);
-
-def('string', 'xb?:s', (p0: unknown, p1?: boolean) => {
+function stringify (p0: unknown, p1?: boolean) {
   if (p0 === un) {
     return un;
   }
@@ -67,8 +66,10 @@ def('string', 'xb?:s', (p0: unknown, p1?: boolean) => {
   if (typeof p0 === 'function') {
     return '';
   }
-  return JSON.stringify(p0, (_, v: SimpleValue): SimpleValue => typeof  v === 'function' ? '' : v, p1 ? 2 : 0); 
-});
+  return JSON.stringify(p0, (_, v: SimpleValue): SimpleValue => typeof  v === 'function' ? '' : v, p1 ? 2 : 0);
+}
+
+def('string', 'xb?:s', stringify);
 def('number', 'x:m', (p0: unknown) => {
   if (p0 === un) {
     return un;
@@ -152,3 +153,13 @@ def('split', '', () => { throw new Error('NOT IMPLEMENTED');});
 def('type', '', () => { throw new Error('NOT IMPLEMENTED');});
 def('power', '', () => { throw new Error('NOT IMPLEMENTED');});
 def('not', '', () => { throw new Error('NOT IMPLEMENTED');});
+
+
+// NOTE these our new functions we've added
+
+def('format', '', (p0: string | undefined, p1: unknown[]) => {
+  if (p0 === un) {
+    return un;
+  }
+  return p0.replace(/$\{([0-9]*)\}/g, (_, v, i) => stringify(p1[+v ?? i]) ?? '');
+});

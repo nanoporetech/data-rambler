@@ -12,8 +12,8 @@ export class Runtime {
     ...(functions as Record<string, SimpleFunction>)
   };
 
-  private get top(): Environment {
-    return this.scope[0]!;
+  private get top(): Environment | undefined {
+    return this.scope[0];
   }
   /**
    * @package
@@ -43,6 +43,9 @@ export class Runtime {
   }
   declare_source (symbol: string, source: Emitter): void {
     const { top } = this;
+    if (top === undefined) {
+      throw new Error('SyntaxError: Cannot declare a new source outside of a module');
+    }
     if (symbol in top) {
       throw new Error(`SyntaxError: Identifier '${symbol}' has already been declared`);
     }
@@ -66,5 +69,8 @@ export class Runtime {
       }
     }
     return this.inputs[symbol] ?? this.outputs[symbol] ?? null;
+  }
+  resolve_input (symbol: string): Emitter | null {
+    return this.inputs[symbol] ?? null;
   }
 }

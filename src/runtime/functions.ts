@@ -12,14 +12,13 @@ function def(name: string, _type: string, fn: Function): void {
   functions[name] = fn;
 }
 
-def('sum', 'a<n>:n', (p0: number[]) => p0.reduce((a, v) => a + v, 0));
-def('count', 'a:n', (p0: unknown[]) => p0.length);
+def('sum', 'a<n>:n', (p0: number[]) => (Array.isArray(p0) ? p0: [p0]).reduce((a, v) => a + v, 0));
+def('count', 'a:n', (p0: unknown[]) => (Array.isArray(p0) ? p0: [p0]).length);
 def('max', 'a<n>:n', (p0: number[]) => p0.length ? Math.max(...p0) : un);
 def('min', 'a<n>:n', (p0: number[]) => p0.length ? Math.min(...p0) : un);
 def('abs', 'n:n', (p0: number) => Math.abs(p0));
 def('floor', 'n:n', (p0: number) => Math.floor(p0));
 def('ceil', 'n:n', (p0: number) => Math.ceil(p0));
-def('round', 'n:n', (p0: number) => Math.round(p0));
 def('sqrt', 'n:n', (p0: number) => Math.sqrt(p0));
 def('random', ':n', () => Math.random());
 def('exists', 'x:b', (p0: unknown) => p0 !== un);
@@ -37,6 +36,16 @@ def('decodeUrlComponent', 's:s', (p0: string) => p0 === un ? un : decodeURICompo
 def('encodeUrl', 's:s', (p0: string) => p0 === un ? un : encodeURI(p0));
 def('encodeUrlComponent', 's:s', (p0: string) => p0 === un ? un : encodeURIComponent(p0));
 def('single', 'af?', (p0: unknown[], p1?: (v: unknown, i: number, a: unknown[]) => unknown) => p1 ? p0?.find(p1) : p0[0]);
+def('spread', 'o:a<a<x>>', (p0: SimpleObject) => Object.entries(p0));
+def('merge', 'o:o', (p0: SimpleObject, p1: SimpleObject) => ({...p0, ...p1}));
+def('zipObject', 'a<a>:o', (p0: [string, unknown][]) => Object.fromEntries(p0));
+def('values', 'o:a<x>', (p0: SimpleObject) => Object.values(p0));
+
+
+def('round', 'nn?:n', (p0: number, p1 = 0) => {
+  const m = 10 ** p1;
+  return Math.round(p0 * m) / m;
+});
 
 function keys (p0: SimpleValue): string[] {
   if (Array.isArray(p0)) {
@@ -132,8 +141,6 @@ def('sort', '', () => { throw new Error('NOT IMPLEMENTED');});
 def('shuffle', '', () => { throw new Error('NOT IMPLEMENTED');});
 def('assert', '', () => { throw new Error('NOT IMPLEMENTED');});
 def('error', '', () => { throw new Error('NOT IMPLEMENTED');});
-def('spread', '', () => { throw new Error('NOT IMPLEMENTED');});
-def('merge', '', () => { throw new Error('NOT IMPLEMENTED');});
 def('lookup', '', () => { throw new Error('NOT IMPLEMENTED');});
 def('foldLeft', '', () => { throw new Error('NOT IMPLEMENTED');});
 def('filter', '', () => { throw new Error('NOT IMPLEMENTED');});

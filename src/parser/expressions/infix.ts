@@ -1,5 +1,6 @@
+import { unexpected_end_of_input, unexpected_token } from '../../scanner/error';
 import { parse_expression } from '../expression';
-import type { AssignmentExpression, BinaryExpression, CallExpression, ConditionalExpression, ContextSegment, Expression, FilterSegment, IndexSegment, PathExpression, PathSegment, ReduceSegment, SortSegment } from '../expression.type';
+import type { AssignmentExpression, BinaryExpression, CallExpression, ConditionalExpression, Expression, FilterSegment, IndexSegment, MapSegment, PathExpression, PathSegment, ReduceExpression, SortSegment } from '../expression.type';
 import { consume_token, ensure_token, match_token, peek_token, previous_token, tokens_remaining } from '../parser_context';
 import type { ParserContext } from '../parser_context.type';
 import { parse_sequence } from '../sequence';
@@ -38,22 +39,13 @@ export function parse_assignment_expression (ctx: ParserContext, left: Expressio
 
 export function parse_path_expression(ctx: ParserContext, left: Expression, precedence: number): PathExpression {
   const { start } = left;
-  const segments: PathSegment[] = [];
-  let head: Expression | null = attempt_unwrap_quoted_field(left);
-
-  if (head.type === 'field_expression' || head.type === 'wildcard_expression' || head.type === 'descendant_expression') {
-    segments.push(head);
-    head = null;
-  }
-
-  segments.push(...parse_path_segments(ctx, precedence));
-
-  const { end } = previous_token(ctx);
+  const right = parse_path_segment(ctx, precedence);
+  const { end } = right;
 
   return {
     type: 'path_expression',
-    head,
-    segments,
+    left,
+    right,
     start,
     end
   }; 
@@ -71,36 +63,44 @@ export function parse_path_segments (ctx: ParserContext, precedence: number): Pa
   return segments;
 }
 
-function parse_path_segment (ctx: ParserContext, precedence: number): PathSegment | null {
+export function parse_path_segment (ctx: ParserContext, precedence: number): PathSegment {
   const next = peek_token(ctx);
-  if (!next || next.type !== 'symbol') {
-    return null;
+  if (!next) {
+    unexpected_end_of_input();
+  }
+  if (next.type !== 'symbol') {
+    unexpected_token(next.value);
   }
 
   switch (next.value) {
     case '[': return parse_filter_segment(ctx);
-    case '{': return parse_reduce_segment(ctx);
     case '^': return parse_sort_segment(ctx);
-    case '#': return parse_index_segment(ctx, precedence);
+    case '#': return parse_index_segment(ctx);
     case '.': return parse_map_segment(ctx, precedence);
   }
-  return null;
+
+  unexpected_token(next.value);
 }
 
-export function parse_map_segment (ctx: ParserContext, precedence: number): PathSegment {
-  ensure_token(ctx, 'symbol', '.');
-  const expr =  attempt_unwrap_quoted_field(parse_expression(ctx, precedence));
+export function parse_map_segment (ctx: ParserContext, precedence: number): MapSegment {
+  const { start } = ensure_token(ctx, 'symbol', '.');
+  const expression =  attempt_unwrap_quoted_field(parse_expression(ctx, precedence));
 
+  let symbol: string | null = null;
   const next = peek_token(ctx);
 
-  // NOTE we only support index/context binding after a map operations
-  // this is supported in the parser as "upgrading" a map segment to a index/context segment
-
-  switch (next?.type === 'symbol' && next.value) {
-    case '@': return parse_context_segment(ctx, expr, precedence);
+  if (next?.type === 'symbol' && next.value === '@') {
+    symbol = parse_context_symbol(ctx);
   }
 
-  return expr;
+  const { end } = previous_token(ctx);
+
+  return {
+    type: 'map',
+    symbol,
+    expression,
+    start, end
+  };
 }
 
 export function attempt_unwrap_quoted_field (expr: Expression): Expression {
@@ -121,56 +121,41 @@ export function parse_filter_segment (ctx: ParserContext): FilterSegment {
   };
 }
 
-export function parse_reduce_segment (ctx: ParserContext): ReduceSegment {
+export function parse_reduce_expression (ctx: ParserContext, expression: Expression): ReduceExpression {
   const { start, end, elements } = parse_object_literal(ctx);
   
   return {
-    type: 'reduce',
+    type: 'reduce_expression',
+    expression,
     start,
     end,
     elements
   };
 }
 
-export function parse_index_segment (ctx: ParserContext, precedence: number): IndexSegment {
+export function parse_index_segment (ctx: ParserContext): IndexSegment {
   const { start } = ensure_token(ctx, 'symbol', '#');
   const { value, end } = ensure_token(ctx, 'identifier');
   if (!value.startsWith('$')) {
     throw new Error('The left side of := must be a variable name (start with $)');
   }
   const symbol = value.slice(1);
-  // NOTE to aid in path evaluation any segments after a index segment are considered
-  // a child path expression
-  const segments = parse_path_segments(ctx, precedence);
 
   return {
     type: 'index',
     start,
     end,
-    segments,
     symbol
   };
 }
 
-export function parse_context_segment (ctx: ParserContext, expression: Expression, precedence: number): ContextSegment {
-  const { start } = ensure_token(ctx, 'symbol', '@');
-  const { value, end } = ensure_token(ctx, 'identifier');
+export function parse_context_symbol (ctx: ParserContext): string {
+  ensure_token(ctx, 'symbol', '@');
+  const { value } = ensure_token(ctx, 'identifier');
   if (!value.startsWith('$')) {
     throw new Error('The left side of := must be a variable name (start with $)');
   }
-  const symbol = value.slice(1);
-  // NOTE to aid in path evaluation any segments after a context segment are considered
-  // a child path expression
-  const segments = parse_path_segments(ctx, precedence);
-
-  return {
-    type: 'context',
-    start,
-    end,
-    expression,
-    segments,
-    symbol
-  };
+  return value.slice(1);
 }
 
 export function parse_sort_segment (ctx: ParserContext): SortSegment {

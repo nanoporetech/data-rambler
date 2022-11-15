@@ -3,7 +3,15 @@ import { Range } from '../../Range';
 import type { SimpleArray, SimpleObject, SimpleValue } from '../../SimpleValue.type';
 import { eval_any_expr, ExpressionEnvironment, extended_typeof } from '../expression';
 
-export type Sequence = SimpleArray;
+export type Sequence = SimpleArray & { sequence: true };
+
+function create_sequence (...data: SimpleArray): Sequence {
+  return data as Sequence;
+}
+
+function concat_sequence (seq: SimpleArray, add: SimpleArray): Sequence {
+  return seq.concat(add) as Sequence;
+}
 
 export function eval_path_expr(ctx: ExpressionEnvironment, expr: PathExpression, value: SimpleValue): SimpleValue {
   const head_value = expr.head ? eval_any_expr(ctx, expr.head, value) : value;
@@ -12,7 +20,7 @@ export function eval_path_expr(ctx: ExpressionEnvironment, expr: PathExpression,
     return undefined;
   }
 
-  return eval_path_sequence(ctx, expr.segments, [head_value]);
+  return eval_path_sequence(ctx, expr.segments, create_sequence(head_value));
 }
 
 export function eval_path_sequence(ctx: ExpressionEnvironment, segments: PathSegment[], sequence: Sequence): SimpleValue {
@@ -51,7 +59,7 @@ export function eval_path_segment(ctx: ExpressionEnvironment, op: PathSegment, s
 }
 
 export function eval_filter_op(ctx: ExpressionEnvironment, expr: FilterSegment, sequence: Sequence): Sequence {
-  const result: SimpleValue[] = [];
+  const result = create_sequence();
 
   const match = (val: SimpleValue, i: number, l: number): boolean => {
     const predicate = eval_any_expr(ctx, expr.expression, val);
@@ -115,7 +123,7 @@ export function eval_reduce_op(ctx: ExpressionEnvironment, expr: ReduceSegment, 
     }
   }
 
-  return [result];
+  return create_sequence(result);
 }
 
 export function eval_sort_op(_ctx: ExpressionEnvironment, _expr: SortSegment, _sequence: Sequence): Sequence {
@@ -123,14 +131,14 @@ export function eval_sort_op(_ctx: ExpressionEnvironment, _expr: SortSegment, _s
 }
 
 export function eval_index_op(ctx: ExpressionEnvironment, op: IndexSegment, sequence: Sequence): Sequence {
-  const output = [];
+  const output = create_sequence();
 
   for (const value of sequence) {
     const scope = { ...ctx };
     const value_array = Array.isArray(value) ? value : [value];
     for (let i = 0; i < value_array.length; i += 1) {
       scope[op.symbol] = i;
-      const result = eval_path_sequence(scope, op.segments, [value_array[i]]);
+      const result = eval_path_sequence(scope, op.segments, create_sequence(value_array[i]));
       if (result) {
         output.push(result);
       }
@@ -145,14 +153,14 @@ export function eval_context_op(ctx: ExpressionEnvironment, op: ContextSegment, 
   // for each result in the expression run the path sequence using the parent item as context and the result bound to the symbol
   // concatenate all the sequence results into a single sequence
 
-  const output = [];
+  const output = create_sequence();
 
   for (const item of sequence.flat()) {
-    const intermediate = eval_path_segment(ctx, op.expression, [item]);
+    const intermediate = eval_path_segment(ctx, op.expression, create_sequence(item));
     const scope = { ...ctx };
     for (const elem of intermediate.flat()) {
       scope[op.symbol] = elem;
-      const result = eval_path_sequence(scope, op.segments, [item]);
+      const result = eval_path_sequence(scope, op.segments, create_sequence(item));
       if (result) {
         output.push(result);
       }
@@ -162,13 +170,13 @@ export function eval_context_op(ctx: ExpressionEnvironment, op: ContextSegment, 
 }
 
 export function eval_field_expr(expr: FieldExpression, value: SimpleValue): SimpleValue {
-  let sequence = [value];
+  let sequence = create_sequence(value);
   sequence = eval_field_op(expr, sequence);
   return flatten_sequence(sequence);
 }
 
 export function eval_wild_expr(descend: boolean, value: SimpleValue): SimpleValue {
-  let sequence = [value];
+  let sequence = create_sequence(value);
   sequence = eval_wild_op(descend, sequence);
   return flatten_sequence(sequence);
 }
@@ -177,14 +185,15 @@ export function eval_parent_expr(): never {
   throw new Error('NOT IMPLEMENTED');
 }
 
-export function eval_wild_op(descend: boolean, sequence: SimpleArray): SimpleArray {
-  let result: SimpleValue[] = [];
+export function eval_wild_op(descend: boolean, sequence: Sequence): Sequence {
+  let result = create_sequence();
+
   while (sequence.length) {
     // pop value from stack
     const next = sequence.pop()!;
     if (Array.isArray(next)) {
       // push back array items
-      sequence = sequence.concat(next);
+      sequence = concat_sequence(sequence, next);
     }
     else if (next instanceof Range || !next) {
       // skip non-dictionary items
@@ -193,23 +202,26 @@ export function eval_wild_op(descend: boolean, sequence: SimpleArray): SimpleArr
     else if (typeof next === 'object') {
       const values = Object.values(next);
       if (descend) {
-        sequence = sequence.concat(values);
+        sequence = concat_sequence(sequence, values);
       }
       // NOTE order of results might wrong, sorry
-      result = values.concat(result);
+      result = concat_sequence(values, result);
+    } else {
+      result.unshift(next);
     }
   }
   return result;
 }
 
-export function eval_field_op(expr: FieldExpression, sequence: SimpleArray): SimpleArray {
-  const result: SimpleValue[] = [];
+export function eval_field_op(expr: FieldExpression, sequence: Sequence): Sequence {
+  const result = create_sequence();
+
   while (sequence.length) {
     // pop value from stack
     const next = sequence.pop()!;
     if (Array.isArray(next)) {
       // push back array items
-      sequence = sequence.concat(next);
+      sequence = concat_sequence(sequence, next);
     }
     else if (next instanceof Range || !next) {
       // skip non-dictionary items
@@ -223,28 +235,30 @@ export function eval_field_op(expr: FieldExpression, sequence: SimpleArray): Sim
   return result;
 }
 
-export function eval_generic_op(ctx: ExpressionEnvironment, expr: Expression, sequence: SimpleArray): SimpleArray {
-  const result: SimpleArray = [];
+export function eval_generic_op(ctx: ExpressionEnvironment, expr: Expression, sequence: Sequence): Sequence {
+  const result = create_sequence();
+
   for (const val of sequence.flat()) {
     const el = eval_any_expr(ctx, expr, val);
     if (el !== undefined) {
-      result.push(el);
+      result.push([el]);
     }
   }
+
   return result;
 }
 
-export function flatten_sequence(sequence: SimpleArray): SimpleValue {
+export function flatten_sequence(sequence: Sequence): SimpleValue {
   if (sequence.length === 0) {
     return undefined;
   }
 
-  const flat = sequence = sequence.flat();
+  const flat = sequence.flat();
 
   return flat.length === 1 ? flat[0] : flat;
 }
 
-export function* flatten(arr: SimpleArray): Iterable<SimpleValue> {
+export function* flatten(arr: Sequence): Iterable<SimpleValue> {
   while (arr.length) {
     // pop value from stack
     const next = arr.shift()!;

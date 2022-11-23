@@ -1,95 +1,222 @@
-import type { ContextSegment, Expression, FieldExpression, FilterSegment, IndexSegment, PathExpression, PathSegment, ReduceSegment, SortSegment } from '../../parser/expression.type';
+import type { FieldExpression, FilterSegment, IndexSegment, MapSegment, PathExpression, PathSegment, ReduceExpression, SortSegment } from '../../parser/expression.type';
 import { Range } from '../../Range';
 import type { SimpleArray, SimpleObject, SimpleValue } from '../../SimpleValue.type';
 import { eval_any_expr, ExpressionEnvironment, extended_typeof } from '../expression';
 
-export type Sequence = SimpleArray & { sequence: true };
+export type Sequence = Iterable<SimpleValue>
 
-function create_sequence (...data: SimpleArray): Sequence {
-  return data as Sequence;
-}
-
-function concat_sequence (seq: SimpleArray, add: SimpleArray): Sequence {
-  return seq.concat(add) as Sequence;
-}
-
-export function eval_path_expr(ctx: ExpressionEnvironment, expr: PathExpression, value: SimpleValue): SimpleValue {
-  const head_value = expr.head ? eval_any_expr(ctx, expr.head, value) : value;
-
-  if (head_value === undefined) {
-    return undefined;
+export function wrap_array(value: SimpleValue): SimpleArray {
+  if (value === undefined) {
+    return [];
   }
-
-  return eval_path_sequence(ctx, expr.segments, create_sequence(head_value));
+  return Array.isArray(value) ? value : [ value ];
 }
 
-export function eval_path_sequence(ctx: ExpressionEnvironment, segments: PathSegment[], sequence: Sequence): SimpleValue {
-  for (const op of segments) {
-    sequence = eval_path_segment(ctx, op, sequence);
-    if (sequence.length === 0) {
-      return undefined;
-    }
-  }
-
-  return flatten_sequence(sequence);
+export function unwrap_array(value: SimpleArray): SimpleValue {
+  return value.length > 1 ? value : value[0]; 
 }
 
-export function eval_path_segment(ctx: ExpressionEnvironment, op: PathSegment, sequence: Sequence): Sequence {
-  switch (op.type) {
+export function eval_path_expr(ctx: ExpressionEnvironment, seg: PathExpression, value: SimpleValue): SimpleValue {
+  const source = eval_any_expr(ctx, seg.head, value);
+  const result = eval_path_segment(ctx, seg.next, wrap_array(source));
+
+  return unwrap_array(Array.from(result));
+}
+
+export function eval_path_segment(ctx: ExpressionEnvironment, seg: PathSegment, sequence: SimpleArray): Sequence {
+  switch (seg.type) {
     case 'filter':
-      return eval_filter_op(ctx, op, sequence);
-    case 'reduce':
-      return eval_reduce_op(ctx, op, sequence);
+      return eval_filter_segment(ctx, seg, sequence);
+    case 'map':
+      return eval_map_segment(ctx, seg, sequence);
     case 'sort':
-      return eval_sort_op(ctx, op, sequence);
-    case 'field_expression':
-      return eval_field_op(op, sequence);
-    case 'wildcard_expression':
-      return eval_wild_op(false, sequence);
-    case 'descendant_expression':
-      return eval_wild_op(true, sequence);
-    default:
-      return eval_generic_op(ctx, op, sequence);
-      // NOTE these segments recurse 
+      return eval_sort_segment(ctx, seg, sequence);
     case 'index':
-      return eval_index_op(ctx, op, sequence);
-    case 'context':
-      return eval_context_op(ctx, op, sequence);
+      return eval_index_segment(ctx, seg, sequence);
   }
 }
 
-export function eval_filter_op(ctx: ExpressionEnvironment, expr: FilterSegment, sequence: Sequence): Sequence {
-  const result = create_sequence();
-
-  const match = (val: SimpleValue, i: number, l: number): boolean => {
-    const predicate = eval_any_expr(ctx, expr.expression, val);
-    if (predicate instanceof Range) {
-      return predicate.includes(i);
-    }
-
-    if (typeof predicate === 'number') {
-      return Math.floor(predicate < 0 ? l + predicate : predicate) === i;
-    }
-
-    // TODO better truthiness here
-    return predicate === true;
-  };
-
-  for (const value of sequence) {
-    const value_array = Array.isArray(value) ? value : [value];
-    for (let i = 0; i < value_array.length; i += 1) {
-      if (match(value_array[i], i, value_array.length)) {
-        result.push(value_array[i]);
-      }
-    }
+export function match_filter_predicate(predicate: SimpleValue, i: number, l: number): boolean {
+  
+  if (predicate instanceof Range) {
+    return predicate.includes(i);
   }
-
-  return result;
+  
+  if (typeof predicate === 'number') {
+    return Math.floor(predicate < 0 ? l + predicate : predicate) === i;
+  }
+  
+  // TODO better truthiness here
+  return predicate === true;
 }
 
-export function eval_reduce_op(ctx: ExpressionEnvironment, expr: ReduceSegment, sequence: Sequence): Sequence {
+export function* eval_filter_segment(ctx: ExpressionEnvironment, seg: FilterSegment, sequence: SimpleArray): Sequence {    
+  const items = sequence.flat();
+
+  for (let i = 0, l = items.length; i < l; i += 1) {
+    const val = items[i];
+    const predicate = eval_any_expr(ctx, seg.expression, val);
+
+    if (!match_filter_predicate(predicate, i, l)) {
+      continue;
+    }
+
+    if (seg.next) {
+      yield* eval_path_segment(ctx, seg.next, wrap_array(val));
+    } else {
+      yield val;
+    }
+  }     
+}
+
+export function* eval_map_segment(ctx: ExpressionEnvironment, expr: MapSegment, sequence: SimpleArray): Sequence {
+  const { symbol } = expr;
+  const scope = symbol ? { ... ctx } : ctx;
+
+  for (const value of flatten(sequence)) {
+
+    const elem = eval_any_expr(ctx, expr.expression, value);
+
+    if (!elem || Array.isArray(elem) && elem.length === 0) {
+      continue;
+    }
+
+    // for (const elem of intermediate) {
+
+    if (!expr.next) {
+      yield symbol ? value : elem;
+      continue;
+    }
+    
+    // NOTE when using a context symbol we actually emit the source value instead of the element
+    // each element is bound to it's variable and then the parent is emitted again
+    // this allows for binding multiple parts of an object ( but isn't particularly performant )
+    if (symbol !== null) {
+      scope[symbol] = elem;
+      yield* eval_path_segment(scope, expr.next, wrap_array(value));
+    } else {
+      // TODO can elem be undefined?
+      yield* eval_path_segment(scope, expr.next, wrap_array(elem));
+    }
+  }
+  // }
+}
+
+export function eval_sort_segment(_ctx: ExpressionEnvironment, _seg: SortSegment, _sequence: SimpleArray): Sequence {
+  throw new Error('not implemented');
+}
+
+export function* eval_index_segment(ctx: ExpressionEnvironment, seg: IndexSegment, sequence: SimpleArray): Sequence {
+  const { symbol } = seg;
+  const scope = { ...ctx }; // NOTE create a child scope!
+
+  if (!seg.next) {
+    return sequence;
+  }
+
+  for (const value of flatten(sequence)) {
+    let i = 0;
+
+    scope[symbol] = i;
+    i += 1;
+
+    yield* eval_path_segment(scope, seg.next, [value]);
+  }
+}
+
+// export function eval_path_sequence(ctx: ExpressionEnvironment, expr: PathExpression, value: SimpleValue): Sequence {
+//   const { left, right } = expr;
+//   let sequence: Iterable<SimpleValue>;
+//   if (left.type === 'path_expression') {
+//     sequence = eval_path_sequence(ctx, left, value);
+//   } else {
+//     sequence = wrap_array(eval_any_expr(ctx, left, value));
+//   }
+
+//   switch (right.type) {
+//     case 'map':
+//       return eval_map_op(ctx, right, sequence);
+//     case 'sort':
+//       return eval_sort_op(ctx, right, sequence);
+//     case 'filter':
+//       return eval_filter_op(ctx, right, sequence);
+//     default:
+//       throw new Error('Generic RHS');
+//   }
+// }
+
+
+// export function* eval_filter_op(ctx: ExpressionEnvironment, expr: FilterSegment, sequence: Sequence): Sequence {
+//   const match = (val: SimpleValue, i: number, l: number): boolean => {
+//     // NOTE this technically pollutes the scope a little, indices become scoped to the current path expression
+//     // instead of from this segment deeper
+//     if (expr.index_symbol) {
+//       ctx[expr.index_symbol] = i;
+//     }
+
+//     const predicate = eval_any_expr(ctx, expr.expression, val);
+//     if (predicate instanceof Range) {
+//       return predicate.includes(i);
+//     }
+
+//     if (typeof predicate === 'number') {
+//       return Math.floor(predicate < 0 ? l + predicate : predicate) === i;
+//     }
+
+//     // TODO better truthiness here
+//     return predicate === true;
+//   };
+
+//   // const wrapped_sequence: SimpleArray | Sequence = Array.isArray(sequence) ? [ sequence ] : sequence;
+
+//   let sequence_index = 0;
+//   const sequence_length = Array.isArray(sequence) ? sequence.length : 0;
+
+//   for (const element of sequence) {
+//     if (Array.isArray(element)) {
+//       for (let i = 0, l = element.length; i < l; i += 1) {
+//         if (match(element[i], i, l)) {
+//           yield element[i];
+//         }
+//       }
+//     } else if (match(element, sequence_index, sequence_length)) {
+//       yield element;
+//     }
+
+//     sequence_index += 1;
+//   }
+// }
+
+// export function* eval_map_op(ctx: ExpressionEnvironment, expr: MapSegment, sequence: Sequence): Sequence {
+//   const { symbol: context_symbol, index_symbol } = expr;
+
+//   for (const value of flatten(sequence)) {
+//     let i = 0;
+
+//     const intermediate = wrap_array(eval_any_expr(ctx, expr.expression, value)).flat();
+
+//     for (const elem of intermediate) {
+//       if (index_symbol !== null) { 
+//         ctx[index_symbol] = i;
+//         i += 1;
+//       }
+//       // NOTE when using a context symbol we actually emit the source value instead of the element
+//       // each element is bound to it's variable and then the parent is emitted again
+//       // this allows for binding multiple parts of an object ( but isn't particularly performant )
+//       if (context_symbol !== null) {
+//         ctx[context_symbol] = elem;
+//         yield value; 
+//       } else {
+//       // TODO can elem be undefined?
+//         yield elem;
+//       }
+//     }
+//   }  
+// }
+
+export function eval_reduce_expression(ctx: ExpressionEnvironment, expr: ReduceExpression, value: SimpleValue): SimpleValue {
   const result: SimpleObject = {};
-  const flat_sequence = Array.from(flatten(sequence));
+  const flat_sequence = wrap_array(eval_any_expr(ctx, expr.expression, value));
 
   for (const kv_expr of expr.elements) {
     const key_results: Record<string, SimpleValue[]> = {};
@@ -123,105 +250,23 @@ export function eval_reduce_op(ctx: ExpressionEnvironment, expr: ReduceSegment, 
     }
   }
 
-  return create_sequence(result);
+  return result;
 }
 
 export function eval_sort_op(_ctx: ExpressionEnvironment, _expr: SortSegment, _sequence: Sequence): Sequence {
   throw new Error('NOT IMPLEMENTED');
 }
 
-export function eval_index_op(ctx: ExpressionEnvironment, op: IndexSegment, sequence: Sequence): Sequence {
-  const output = create_sequence();
-
-  for (const value of sequence) {
-    const scope = { ...ctx };
-    const value_array = Array.isArray(value) ? value : [value];
-    for (let i = 0; i < value_array.length; i += 1) {
-      scope[op.symbol] = i;
-      const result = eval_path_sequence(scope, op.segments, create_sequence(value_array[i]));
-      if (result) {
-        output.push(result);
-      }
-    }
-  }
-  return output;
-}
-
-export function eval_context_op(ctx: ExpressionEnvironment, op: ContextSegment, sequence: Sequence): Sequence {
-
-  // for each item in sequence evaluate the expression
-  // for each result in the expression run the path sequence using the parent item as context and the result bound to the symbol
-  // concatenate all the sequence results into a single sequence
-
-  const output = create_sequence();
-
-  for (const item of sequence.flat()) {
-    const intermediate = eval_path_segment(ctx, op.expression, create_sequence(item));
-    const scope = { ...ctx };
-    for (const elem of intermediate.flat()) {
-      scope[op.symbol] = elem;
-      const result = eval_path_sequence(scope, op.segments, create_sequence(item));
-      if (result) {
-        output.push(result);
-      }
-    }
-  }
-  return output;
-}
-
 export function eval_field_expr(expr: FieldExpression, value: SimpleValue): SimpleValue {
-  let sequence = create_sequence(value);
-  sequence = eval_field_op(expr, sequence);
-  return flatten_sequence(sequence);
-}
-
-export function eval_wild_expr(descend: boolean, value: SimpleValue): SimpleValue {
-  let sequence = create_sequence(value);
-  sequence = eval_wild_op(descend, sequence);
-  return flatten_sequence(sequence);
-}
-
-export function eval_parent_expr(): never {
-  throw new Error('NOT IMPLEMENTED');
-}
-
-export function eval_wild_op(descend: boolean, sequence: Sequence): Sequence {
-  let result = create_sequence();
+  let sequence = [value];
+  const result = [];
 
   while (sequence.length) {
     // pop value from stack
     const next = sequence.pop()!;
     if (Array.isArray(next)) {
       // push back array items
-      sequence = concat_sequence(sequence, next);
-    }
-    else if (next instanceof Range || !next) {
-      // skip non-dictionary items
-      continue;
-    }
-    else if (typeof next === 'object') {
-      const values = Object.values(next);
-      if (descend) {
-        sequence = concat_sequence(sequence, values);
-      }
-      // NOTE order of results might wrong, sorry
-      result = concat_sequence(values, result);
-    } else {
-      result.unshift(next);
-    }
-  }
-  return result;
-}
-
-export function eval_field_op(expr: FieldExpression, sequence: Sequence): Sequence {
-  const result = create_sequence();
-
-  while (sequence.length) {
-    // pop value from stack
-    const next = sequence.pop()!;
-    if (Array.isArray(next)) {
-      // push back array items
-      sequence = concat_sequence(sequence, next);
+      sequence = sequence.concat(next);
     }
     else if (next instanceof Range || !next) {
       // skip non-dictionary items
@@ -232,43 +277,50 @@ export function eval_field_op(expr: FieldExpression, sequence: Sequence): Sequen
       result.unshift(value);
     }
   }
-  return result;
+
+  return unwrap_array(result);
 }
 
-export function eval_generic_op(ctx: ExpressionEnvironment, expr: Expression, sequence: Sequence): Sequence {
-  const result = create_sequence();
+export function eval_wild_expr(descend: boolean, value: SimpleValue): SimpleValue {
+  let sequence = wrap_array(value);
+  let result: SimpleArray = [];
 
-  for (const val of sequence.flat()) {
-    const el = eval_any_expr(ctx, expr, val);
-    if (el !== undefined) {
-      result.push([el]);
-    }
-  }
-
-  return result;
-}
-
-export function flatten_sequence(sequence: Sequence): SimpleValue {
-  if (sequence.length === 0) {
-    return undefined;
-  }
-
-  const flat = sequence.flat();
-
-  return flat.length === 1 ? flat[0] : flat;
-}
-
-export function* flatten(arr: Sequence): Iterable<SimpleValue> {
-  while (arr.length) {
+  while (sequence.length) {
     // pop value from stack
-    const next = arr.shift()!;
+    const next = sequence.pop()!;
     if (Array.isArray(next)) {
       // push back array items
-      arr.unshift(...next);
+      sequence = sequence.concat(next);
     }
-    else {
-      // yield non array values
-      yield next;
+    else if (next instanceof Range || !next) {
+      // skip non-dictionary items
+      continue;
+    }
+    else if (typeof next === 'object') {
+      const values = Object.values(next);
+      if (descend) {
+        sequence = sequence.concat(values);
+      }
+      // NOTE order of results might wrong, sorry
+      result = values.concat(result);
+    } else {
+      result.unshift(next);
+    }
+  }
+
+  return unwrap_array(result);
+}
+
+export function eval_parent_expr(): never {
+  throw new Error('NOT IMPLEMENTED');
+}
+
+export function* flatten(source: Iterable<SimpleValue>): Iterable<SimpleValue> {
+  for (const el of source) {
+    if (Array.isArray(el)) {
+      yield* flatten(el);
+    } else {
+      yield el;
     }
   }
 }

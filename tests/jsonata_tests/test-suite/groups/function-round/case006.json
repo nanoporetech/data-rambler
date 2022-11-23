@@ -2,5 +2,5 @@
     "expr": "$round(-0.3)",
     "dataset": null,
     "bindings": {},
-    "result": 0
+    "result": -0
 }

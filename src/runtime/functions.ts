@@ -24,6 +24,7 @@ def('random', ':n', () => Math.random());
 def('exists', 'x:b', (p0: unknown) => p0 !== un);
 def('reverse', 'a:a', (p0: unknown[]) => p0.reverse());
 def('average', 'a<n>:n', (p0: number[]) => p0.length ? p0.reduce((a, v) => a + v, 0) / p0.length : un);
+def('reduce', '', (p0: unknown[], p1: (a: unknown, v: unknown, i: unknown) => unknown, p2: unknown) => p0.reduce(p1, p2)); 
 def('lowercase', 's:s', (p0: string) => p0.toLowerCase());
 def('uppercase', 's:s', (p0: string) => p0.toUpperCase());
 def('length', 's:n', (p0: string) => p0 !== un ? [...p0].length : un);

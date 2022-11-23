@@ -155,8 +155,11 @@ export function list_references(ctx: ReferenceContext, expr: Expression): void {
       }
       break;
 
+    case 'reduce_expression':
+      throw new Error('TODO');
+
     case 'assignment_expression':
-    // TODO should we add additonal protection for existing variables here
+    // TODO should we add additional protection for existing variables here
       ctx.locals.add(expr.symbol);
       list_references(ctx, expr.expression);
       break;
@@ -174,12 +177,8 @@ export function list_references(ctx: ReferenceContext, expr: Expression): void {
     }
 
     case 'path_expression': {
-      if (expr.head) {
-        list_references(ctx, expr.head);
-      }
-      for (const seg of expr.segments) {
-        list_segment_reference(ctx, seg);
-      }
+      list_references(ctx, expr.head);
+      list_segment_reference(ctx, expr.next);
       break;
     }
 
@@ -211,31 +210,24 @@ export function list_references(ctx: ReferenceContext, expr: Expression): void {
 function list_segment_reference(ctx: ReferenceContext, seg: PathSegment) {
   switch (seg.type) {
     case 'filter':
-      return list_references(ctx, seg.expression);
+      list_references(ctx, seg.expression);
+      break;
     case 'sort':
       for (const elem of seg.elements) {
         list_references(ctx, elem.expression);
       }
-      return;
-    case 'reduce':
-      for (const { key, value } of seg.elements) {
-        list_references(ctx, key);
-        list_references(ctx, value);
+      break;
+    case 'map':
+      if (seg.symbol) {
+        ctx.locals.add(seg.symbol);
       }
-      return;
-    case 'context':
       list_references(ctx, seg.expression);
-      for (const elem of seg.segments) {
-        list_segment_reference(ctx, elem);
-      }
-      ctx.locals.add(seg.symbol);
-      return;
+      break;
     case 'index':
-      for (const elem of seg.segments) {
-        list_segment_reference(ctx, elem);
-      }
       ctx.locals.add(seg.symbol);
-      return;
+      break;
   }
-  return list_references(ctx, seg);
+  if (seg.next) {
+    list_segment_reference(ctx, seg.next);
+  }
 }

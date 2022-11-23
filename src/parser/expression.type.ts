@@ -50,8 +50,8 @@ export type ArithmeticExpression = BinaryExpression<
 >;
 
 export interface PathExpression extends ExpressionBase<'path_expression'> {
-  left: Expression | PathSegment
-  right: PathSegment
+  head: Expression;
+  next: PathSegment;
 }
 
 export interface ReduceExpression extends ExpressionBase<'reduce_expression'> {
@@ -59,13 +59,14 @@ export interface ReduceExpression extends ExpressionBase<'reduce_expression'> {
   elements: { key: Expression; value: Expression }[];
 }
 
-export type PathSegment = FilterSegment | MapSegment | SortSegment | IndexSegment | ContextSegment | Expression;
+export type PathSegment = FilterSegment | MapSegment | SortSegment | IndexSegment;
 
 export interface FilterSegment {
   type: 'filter';
   start: Position;
   end: Position;
   expression: Expression;
+  next: PathSegment | null;
 }
 
 export interface SortSegment {
@@ -73,6 +74,7 @@ export interface SortSegment {
   start: Position;
   end: Position;
   elements: { ascending: boolean; expression: Expression }[];
+  next: PathSegment | null;
 }
 
 export interface MapSegment {
@@ -80,6 +82,7 @@ export interface MapSegment {
   start: Position;
   end: Position;
   expression: Expression;
+  next: PathSegment | null; 
   symbol: string | null;
 }
 
@@ -87,13 +90,7 @@ export interface IndexSegment {
   type: 'index';
   start: Position;
   end: Position;
-  symbol: string;
-}
-
-export interface ContextSegment {
-  type: 'context';
-  start: Position;
-  end: Position;
+  next: PathSegment | null;
   symbol: string;
 }
 

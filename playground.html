@@ -54,7 +54,38 @@
     </style>
   </head>
   <body>
-    <div class="header"></div>
+    <div class="header">
+      <select class="dataset-selector">
+        <option value="dataset0.json">dataset 0</option>
+        <option value="dataset1.json">dataset 1</option>
+        <option value="dataset2.json">dataset 2</option>
+        <option value="dataset3.json">dataset 3</option>
+        <option value="dataset4.json">dataset 4</option>
+        <option value="dataset5.json">dataset 5</option>
+        <option value="dataset6.json">dataset 6</option>
+        <option value="dataset7.json">dataset 7</option>
+        <option value="dataset8.json">dataset 8</option>
+        <option value="dataset9.json">dataset 9</option>
+        <option value="dataset10.json">dataset 10</option>
+        <option value="dataset11.json">dataset 11</option>
+        <option value="dataset12.json">dataset 12</option>
+        <option value="dataset13.json">dataset 13</option>
+        <option value="dataset14.json">dataset 14</option>
+        <option value="dataset15.json">dataset 15</option>
+        <option value="dataset16.json">dataset 16</option>
+        <option value="dataset17.json">dataset 17</option>
+        <option value="dataset18.json">dataset 18</option>
+        <option value="dataset19.json">dataset 19</option>
+        <option value="dataset20.json">dataset 20</option>
+        <option value="dataset21.json">dataset 21</option>
+        <option value="dataset22.json">dataset 22</option>
+        <option value="dataset23.json">dataset 23</option>
+        <option value="dataset24.json">dataset 24</option>
+        <option value="employees.json">employees</option>
+        <option value="items.json">items</option>
+        <option value="library.json">library</option>
+      </select>
+    </div>
     <div class="json-pane" contenteditable>
       {
         "Account": {
@@ -137,9 +168,15 @@
     <script type="module">
       import { prepare_expression, scan, Runtime } from './mjs/index.mjs';
 
+      document.querySelector('[contenteditable]').addEventListener('paste', function (event) {
+        event.preventDefault();
+        document.execCommand('inserttext', false, event.clipboardData.getData('text/plain'));
+      });
+
       const json_pane = document.querySelector('.json-pane');
       const expression_pane = document.querySelector('.expression-pane');
       const output_pane = document.querySelector('.output-pane');
+      const dataset_selector = document.querySelector('.dataset-selector');
 
       const runtime = new Runtime;
 
@@ -149,6 +186,7 @@
         let expr;
         try {
           expr = prepare_expression(runtime, expr_source);
+          localStorage.setItem('expr', expr_source);
         } catch (e) {
           output_pane.textContent = e.message;
           return;
@@ -157,6 +195,7 @@
         let data;
         try {
           data = JSON.parse(json_pane.textContent);
+          localStorage.setItem('json', JSON.stringify(data));
         } catch {
           output_pane.textContent = 'Invalid JSON';
           return;
@@ -177,6 +216,20 @@
         }
       }
 
+      function restore_state () {
+        const expr_source = localStorage.getItem('expr');
+        const json_data = localStorage.getItem('json');
+
+        if (expr_source) {
+          expression_pane.textContent = expr_source;
+        }
+        if (json_data) {
+          json_pane.textContent = JSON.stringify(JSON.parse(json_data), null, 2);
+        }
+
+        update();
+      }
+
       json_pane.addEventListener('input', () => {
         update();
       });
@@ -184,7 +237,12 @@
         update();
       });
 
-      update();
+      dataset_selector.addEventListener('change', async (e) => {
+        const res = await fetch(`datasets/${e.target.value}`);
+        json_pane.textContent = JSON.stringify(await res.json(), null, 2);
+      })
+
+      restore_state();
     </script>
   </body>
 </html>

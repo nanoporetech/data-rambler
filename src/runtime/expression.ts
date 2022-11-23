@@ -5,7 +5,7 @@ export type ExpressionEnvironment = Record<string, SimpleValue>;
 import type { SimpleFunction, SimpleValue } from '../SimpleValue.type';
 import type { Expression, BinaryExpression, ComparisonExpression, ArithmeticExpression, ConditionalExpression, EqualityExpression, FunctionExpression, CallExpression, SimplePrefixExpression, GroupExpression } from '../parser/expression.type';
 import type { Runtime } from './Runtime';
-import { eval_field_expr, eval_parent_expr, eval_path_expr, eval_wild_expr } from './expressions/path';
+import { eval_field_expr, eval_parent_expr, eval_path_expr, eval_reduce_expression, eval_wild_expr } from './expressions/path';
 import { eval_object_expr } from './expressions/object';
 import { eval_array_expr } from './expressions/array';
 import { eval_range_expr } from './expressions/range';
@@ -38,6 +38,7 @@ export function eval_any_expr(ctx: ExpressionEnvironment, expr: Expression, valu
     case 'not_equals_expression':             return eval_equality_expr(ctx, expr, value);
     case 'chain_expression':                  return eval_chain_expr(ctx, expr, value);
     case 'path_expression':                   return eval_path_expr(ctx, expr, value);
+    case 'reduce_expression':                 return eval_reduce_expression(ctx, expr, value);
     case 'field_expression':                  return eval_field_expr(expr, value);
     case 'wildcard_expression':               return eval_wild_expr(false, value);
     case 'descendant_expression':             return eval_wild_expr(true, value);

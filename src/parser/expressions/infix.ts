@@ -1,7 +1,6 @@
-import { unexpected_end_of_input, unexpected_token } from '../../scanner/error';
 import { parse_expression } from '../expression';
 import type { AssignmentExpression, BinaryExpression, CallExpression, ConditionalExpression, Expression, FilterSegment, IndexSegment, MapSegment, PathExpression, PathSegment, ReduceExpression, SortSegment } from '../expression.type';
-import { consume_token, ensure_token, match_token, peek_token, previous_token, tokens_remaining } from '../parser_context';
+import { consume_token, ensure_token, match_token, peek_token, previous_token } from '../parser_context';
 import type { ParserContext } from '../parser_context.type';
 import { parse_sequence } from '../sequence';
 import { parse_expression_sequence, parse_object_literal } from './prefix';
@@ -37,69 +36,75 @@ export function parse_assignment_expression (ctx: ParserContext, left: Expressio
   };
 }
 
-export function parse_path_expression(ctx: ParserContext, left: Expression, precedence: number): PathExpression {
-  const { start } = left;
-  const right = parse_path_segment(ctx, precedence);
-  const { end } = right;
+export function parse_path_expression(ctx: ParserContext, head: Expression, precedence: number): PathExpression {
+  const { start } = head;
+  const next = parse_path_segment(ctx, precedence);
+
+  if (!next) {
+    throw new Error('Parse error; expected a path segment');  
+  }
+
+  const { end } = next;
 
   return {
     type: 'path_expression',
-    left,
-    right,
+    head: attempt_unwrap_quoted_field(head),
+    next,
     start,
     end
   }; 
 }
 
-export function parse_path_segments (ctx: ParserContext, precedence: number): PathSegment[] {
-  const segments: PathSegment[] = [];
-  while (tokens_remaining(ctx)) {
-    const segment = parse_path_segment(ctx, precedence);
-    if (!segment) {
-      break;
-    }
-    segments.push(segment);
-  }
-  return segments;
-}
-
-export function parse_path_segment (ctx: ParserContext, precedence: number): PathSegment {
+export function parse_path_segment (ctx: ParserContext, precedence: number): PathSegment | null {
   const next = peek_token(ctx);
-  if (!next) {
-    unexpected_end_of_input();
-  }
-  if (next.type !== 'symbol') {
-    unexpected_token(next.value);
+  if (next?.type !== 'symbol') {
+    return null;
   }
 
   switch (next.value) {
-    case '[': return parse_filter_segment(ctx);
-    case '^': return parse_sort_segment(ctx);
-    case '#': return parse_index_segment(ctx);
+    case '[': return parse_filter_segment(ctx, precedence);
+    case '^': return parse_sort_segment(ctx, precedence);
     case '.': return parse_map_segment(ctx, precedence);
+    case '#': return parse_index_segment(ctx, precedence);
   }
 
-  unexpected_token(next.value);
+  return null;
 }
 
 export function parse_map_segment (ctx: ParserContext, precedence: number): MapSegment {
   const { start } = ensure_token(ctx, 'symbol', '.');
   const expression =  attempt_unwrap_quoted_field(parse_expression(ctx, precedence));
 
-  let symbol: string | null = null;
-  const next = peek_token(ctx);
-
-  if (next?.type === 'symbol' && next.value === '@') {
-    symbol = parse_context_symbol(ctx);
-  }
-
+  const context_symbol = parse_context_symbol(ctx);
   const { end } = previous_token(ctx);
+  const next = parse_path_segment(ctx, precedence);
 
   return {
     type: 'map',
-    symbol,
+    symbol: context_symbol,
     expression,
-    start, end
+    next,
+    start,
+    end
+  };
+}
+
+export function parse_index_segment (ctx: ParserContext, precedence: number): IndexSegment {
+  const { start } = ensure_token(ctx, 'symbol', '#');
+  const { value } = consume_token(ctx);
+  if (!value.startsWith('$')) {
+    throw new Error('The left side of := must be a variable name (start with $)');
+  }
+  const symbol = value.slice(1);
+  const { end } = previous_token(ctx);
+  const next = parse_path_segment(ctx, precedence);
+
+  return {
+    type: 'index',
+    symbol,
+    next,
+    start,
+    end
   };
 }
 
@@ -111,13 +116,15 @@ export function attempt_unwrap_quoted_field (expr: Expression): Expression {
   return expr;
 }
 
-export function parse_filter_segment (ctx: ParserContext): FilterSegment {
+export function parse_filter_segment (ctx: ParserContext, precedence: number): FilterSegment {
   const { start } = ensure_token(ctx, 'symbol', '[');
   const expression = parse_expression(ctx); // default precedence inside the brackets
+
   const { end } = ensure_token(ctx, 'symbol', ']');
+  const next = parse_path_segment(ctx, precedence);
 
   return {
-    type: 'filter', expression, start, end
+    type: 'filter', expression, start, end, next
   };
 }
 
@@ -133,32 +140,19 @@ export function parse_reduce_expression (ctx: ParserContext, expression: Express
   };
 }
 
-export function parse_index_segment (ctx: ParserContext): IndexSegment {
-  const { start } = ensure_token(ctx, 'symbol', '#');
-  const { value, end } = ensure_token(ctx, 'identifier');
-  if (!value.startsWith('$')) {
-    throw new Error('The left side of := must be a variable name (start with $)');
+export function parse_context_symbol (ctx: ParserContext): string | null {
+  if (!match_token(ctx, 'symbol', '@')) {
+    return null;
   }
-  const symbol = value.slice(1);
-
-  return {
-    type: 'index',
-    start,
-    end,
-    symbol
-  };
-}
-
-export function parse_context_symbol (ctx: ParserContext): string {
-  ensure_token(ctx, 'symbol', '@');
-  const { value } = ensure_token(ctx, 'identifier');
+  consume_token(ctx);
+  const { value } = consume_token(ctx);
   if (!value.startsWith('$')) {
     throw new Error('The left side of := must be a variable name (start with $)');
   }
   return value.slice(1);
 }
 
-export function parse_sort_segment (ctx: ParserContext): SortSegment {
+export function parse_sort_segment (ctx: ParserContext, precedence: number): SortSegment {
   const { start } = ensure_token(ctx, 'symbol', '^');
   const { end, elements } = parse_sequence(ctx, ['(', ')'], ctx => {
     let ascending = true; // default to ascending order
@@ -178,12 +172,15 @@ export function parse_sort_segment (ctx: ParserContext): SortSegment {
       expression
     };
   });
+
+  const next = parse_path_segment(ctx, precedence);
   
   return {
     type: 'sort',
     start,
     end,
-    elements
+    elements,
+    next,
   };
 }
 
@@ -221,7 +218,7 @@ export function parse_conditional_expression (ctx: ParserContext, left: Expressi
   };
 }
 
-export function parse_call_expression (ctx: ParserContext, callee: Expression, _precedence: number): CallExpression {
+export function parse_call_expression (ctx: ParserContext, callee: Expression): CallExpression {
   const { start } = callee;
   const { elements, end } = parse_expression_sequence(ctx, ['(', ')'], 1); // ensure don't parse comma expression
   return {

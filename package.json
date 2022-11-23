@@ -7,7 +7,9 @@
   "scripts": {
     "test": "jest --verbose --coverage",
     "typecheck": "tsc --noEmit --watch",
-    "build": "rollup -c && cp ./package.json ./dist/package.json && cp ./README.md ./dist/README.md && cp ./playground.html ./dist/playground.html",
+    "build": "rollup -c && cp ./package.json ./dist/package.json && cp ./README.md ./dist/README.md",
+    "predev": "npm run build",
+    "dev": "cp ./playground.html ./dist/playground.html && cp -r tests/jsonata_tests/test-suite/datasets ./dist/datasets",
     "lint": "eslint src/*"
   },
   "homepage": "https://github.com/nanoporetech/data-rambler",

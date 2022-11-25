@@ -6,7 +6,8 @@ import { parse_sequence } from '../sequence';
 import { unexpected_end_of_input, unexpected_token } from '../../scanner/error';
 import { parse_expression } from '../expression';
 import type { Sequence } from '../sequence.type';
-import type { ArrayExpression, Expression, FieldExpression, FunctionExpression, GroupExpression, IdentifierExpression, JSONExpression, ObjectExpression, SimplePrefixExpression, SymbolExpression } from '../expression.type';
+import type { ArrayExpression, Expression, FieldSegment, FunctionExpression, GroupExpression, IdentifierExpression, JSONExpression, ObjectExpression, PathExpression, SimplePrefixExpression, WildcardSegment } from '../expression.type';
+import { continue_path_expression,  } from './infix';
 
 export function parse_expression_sequence (ctx: ParserContext, delimiter: [string, string], precedence = 0): Sequence<Expression> {
   return parse_sequence(ctx, delimiter, ctx => parse_expression(ctx, precedence));
@@ -43,6 +44,8 @@ export function parse_number_literal(ctx: ParserContext): JSONExpression {
 
 export function parse_string_literal(ctx: ParserContext): JSONExpression {
   const { start, value, end } = consume_token(ctx);
+
+  // TODO might actually be a quoted literal
   return {
     type: 'json_expression',
     start,
@@ -97,17 +100,28 @@ export function parse_array_literal(ctx: ParserContext): ArrayExpression {
   };
 }
 
-export function parse_field_expression(ctx: ParserContext): FieldExpression | IdentifierExpression {
+export function parse_field_expression(ctx: ParserContext, precedence: number): PathExpression | IdentifierExpression {
   const { start, value, end } = consume_token(ctx);
 
-  const type = value.startsWith('$') ? 'identifier_expression' : 'field_expression';
+  if (value.startsWith('$')) {
+    return {
+      type: 'identifier_expression',
+      start,
+      end,
+      value: value.slice(1),
+    };
+  }
 
-  return {
-    type,
+  const first_segment: FieldSegment = {
+    type: 'field',
     start,
     end,
-    value: type === 'identifier_expression' ? value.slice(1) : value,
+    symbol: value,
+    context: null,
+    next: null,
   };
+
+  return continue_path_expression(ctx, first_segment, precedence);
 }
 
 export function parse_function_expression(ctx: ParserContext): FunctionExpression {
@@ -158,32 +172,25 @@ export function parse_not_expression(ctx: ParserContext, precedence: number): Si
   };
 }
 
-export function parse_wildcard_expression(ctx: ParserContext): SymbolExpression | SymbolExpression {
-  const { start, end } = ensure_token(ctx, 'symbol', '*');
+export function parse_wildcard_expression(ctx: ParserContext, precedence: number): PathExpression {
+  const { start } = ensure_token(ctx, 'symbol', '*');
 
+  let descend = false;
   if (match_token(ctx, 'symbol', '*')) {
-    const { end } = consume_token(ctx);
-    return {
-      type: 'descendant_expression',
-      start,
-      end,
-    }; 
+    consume_token(ctx);
+    descend = true;
   }
-  return {
-    type: 'wildcard_expression',
+  const { end } = previous_token(ctx);
+
+  const first_segment: WildcardSegment = {
+    type: 'wild',
+    descend,
     start,
     end,
+    next: null,
   };
-}
 
-export function parse_parent_expression(ctx: ParserContext): SymbolExpression {
-  const { start, end } = ensure_token(ctx, 'symbol', '%');
-
-  return {
-    type: 'parent_expression',
-    start,
-    end,
-  };
+  return continue_path_expression(ctx, first_segment, precedence);
 }
 
 export function parse_typeof_expression(ctx: ParserContext, precedence: number): SimplePrefixExpression {

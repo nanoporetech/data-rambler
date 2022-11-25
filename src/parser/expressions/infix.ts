@@ -1,5 +1,5 @@
 import { parse_expression } from '../expression';
-import type { AssignmentExpression, BinaryExpression, CallExpression, ConditionalExpression, Expression, FilterSegment, IndexSegment, MapSegment, PathExpression, PathSegment, ReduceExpression, SortSegment } from '../expression.type';
+import type { AssignmentExpression, BinaryExpression, CallExpression, ConditionalExpression, Expression, FieldSegment, FilterSegment, IdentifierExpression, IndexSegment, MapSegment, PathExpression, PathSegment, ReduceExpression, SortSegment, WildcardSegment } from '../expression.type';
 import { consume_token, ensure_token, match_token, peek_token, previous_token } from '../parser_context';
 import type { ParserContext } from '../parser_context.type';
 import { parse_sequence } from '../sequence';
@@ -37,6 +37,19 @@ export function parse_assignment_expression (ctx: ParserContext, left: Expressio
 }
 
 export function parse_path_expression(ctx: ParserContext, head: Expression, precedence: number): PathExpression {
+  // we might have to convert the head into a field segment
+  if (head.type === 'json_expression' && typeof head.value === 'string') {
+    const first_segment: FieldSegment = {
+      start: head.start,
+      end: head.end,
+      type: 'field',
+      context: null,
+      symbol: head.value,
+      next: null,
+    };
+    return continue_path_expression(ctx, first_segment, precedence); 
+  }
+
   const { start } = head;
   const next = parse_path_segment(ctx, precedence);
 
@@ -48,8 +61,24 @@ export function parse_path_expression(ctx: ParserContext, head: Expression, prec
 
   return {
     type: 'path_expression',
-    head: attempt_unwrap_quoted_field(head),
+    head,
     next,
+    start,
+    end
+  }; 
+}
+
+export function continue_path_expression(ctx: ParserContext, first: PathSegment, precedence: number): PathExpression {
+  const { start } = first;
+  first.next = parse_path_segment(ctx, precedence);
+
+  const head: IdentifierExpression = { type: 'identifier_expression', value: '', start, end: start };
+  const { end } = previous_token(ctx);
+
+  return {
+    type: 'path_expression',
+    head,
+    next: first,
     start,
     end
   }; 
@@ -71,21 +100,67 @@ export function parse_path_segment (ctx: ParserContext, precedence: number): Pat
   return null;
 }
 
-export function parse_map_segment (ctx: ParserContext, precedence: number): MapSegment {
+export function parse_map_segment (ctx: ParserContext, precedence: number): MapSegment | FieldSegment | WildcardSegment {
   const { start } = ensure_token(ctx, 'symbol', '.');
-  const expression =  attempt_unwrap_quoted_field(parse_expression(ctx, precedence));
 
-  const context_symbol = parse_context_symbol(ctx);
+  // start by seeing if it's a wild segment
+  if (match_token(ctx, 'symbol', '*')) {
+    return parse_wild_segment(ctx, precedence);
+  }
+  // then try a quoted field segment
+  if (match_token(ctx, 'string')) {
+    return parse_field_segment(ctx, precedence, true);
+  }
+  // finally try a field segment
+  if (match_token(ctx, 'identifier')) {
+    if (!peek_token(ctx)?.value.startsWith('$')) {
+      return parse_field_segment(ctx, precedence, false);
+    }
+  }
+  
+  const expression =  parse_expression(ctx, precedence);
+
   const { end } = previous_token(ctx);
   const next = parse_path_segment(ctx, precedence);
 
   return {
     type: 'map',
-    symbol: context_symbol,
     expression,
     next,
     start,
     end
+  };
+}
+
+export function parse_wild_segment (ctx: ParserContext, precedence: number): WildcardSegment {
+  const { start } = ensure_token(ctx, 'symbol', '*');
+  let descend = false;
+  if (match_token(ctx, 'symbol', '*')) {
+    descend = true;
+    consume_token(ctx);
+  }
+  const { end } = previous_token(ctx);
+  const next = parse_path_segment(ctx, precedence);
+  return {
+    type: 'wild',
+    start,
+    end,
+    descend,
+    next
+  };
+}
+
+export function parse_field_segment (ctx: ParserContext, precedence: number, quoted: boolean): FieldSegment {
+  const { value, start, end } = ensure_token(ctx, quoted ? 'string' : 'identifier');
+  const context = parse_context_symbol(ctx);
+  const next = parse_path_segment(ctx, precedence);
+  return {
+    type: 'field',
+    start,
+    end,
+    symbol: value,
+    context,
+    next
   };
 }
 
@@ -106,14 +181,6 @@ export function parse_index_segment (ctx: ParserContext, precedence: number): In
     start,
     end
   };
-}
-
-export function attempt_unwrap_quoted_field (expr: Expression): Expression {
-  if (expr.type === 'json_expression' && typeof expr.value === 'string') {
-    const { start, end, value } = expr;
-    return { type: 'field_expression', start, end, value };
-  }
-  return expr;
 }
 
 export function parse_filter_segment (ctx: ParserContext, precedence: number): FilterSegment {

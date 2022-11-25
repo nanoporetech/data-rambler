@@ -1,7 +1,7 @@
 import { unexpected_end_of_input, unexpected_token } from '../scanner/error';
 import type { Expression } from './expression.type';
 import { parse_add_expression, parse_assignment_expression, parse_call_expression, parse_chain_expression, parse_coalescing_expression, parse_comma_expression, parse_concat_expression, parse_conditional_expression, parse_divide_expression, parse_equals_expression, parse_exponentiation_expression, parse_greater_than_expression, parse_greater_than_or_equals_expression, parse_less_than_expression, parse_less_than_or_equals_expression, parse_logical_and_expression, parse_logical_in_expression, parse_logical_or_expression, parse_multiply_expression, parse_not_equals_expression, parse_path_expression, parse_range_expression, parse_reduce_expression, parse_remainder_expression, parse_subtract_expression } from './expressions/infix';
-import { parse_array_literal, parse_boolean_literal, parse_field_expression, parse_function_expression, parse_group_expression, parse_negation_expression, parse_not_expression, parse_null_literal, parse_number_literal, parse_object_literal, parse_parent_expression, parse_string_literal, parse_typeof_expression, parse_wildcard_expression } from './expressions/prefix';
+import { parse_array_literal, parse_boolean_literal, parse_field_expression, parse_function_expression, parse_group_expression, parse_negation_expression, parse_not_expression, parse_null_literal, parse_number_literal, parse_object_literal, parse_string_literal, parse_typeof_expression, parse_wildcard_expression } from './expressions/prefix';
 import { add_infix_parselet, add_prefix_parselet, get_infix_parselet, get_prefix_parselet } from './parselets';
 import { peek_token, tokens_remaining } from './parser_context';
 
@@ -53,9 +53,7 @@ add_infix_parselet ('symbol:~>',		      12, parse_chain_expression);
 
 add_infix_parselet ('symbol:(',           13, parse_call_expression);
 
-
 add_prefix_parselet('symbol:*', 		      14, parse_wildcard_expression);
-add_prefix_parselet('symbol:%', 		      14, parse_parent_expression);
 add_prefix_parselet('symbol:(',           14, parse_group_expression);
 add_prefix_parselet('number',             14, parse_number_literal);
 add_prefix_parselet('string',             14, parse_string_literal);

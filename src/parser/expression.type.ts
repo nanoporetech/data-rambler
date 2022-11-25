@@ -59,7 +59,24 @@ export interface ReduceExpression extends ExpressionBase<'reduce_expression'> {
   elements: { key: Expression; value: Expression }[];
 }
 
-export type PathSegment = FilterSegment | MapSegment | SortSegment | IndexSegment;
+export type PathSegment = FilterSegment | MapSegment | SortSegment | IndexSegment | FieldSegment | WildcardSegment;
+
+export interface FieldSegment {
+  type: 'field';
+  start: Position;
+  end: Position;
+  next: PathSegment | null;
+  symbol: string;
+  context: string | null;
+}
+
+export interface WildcardSegment {
+  type: 'wild';
+  start: Position;
+  end: Position;
+  next: PathSegment | null;
+  descend: boolean;
+}
 
 export interface FilterSegment {
   type: 'filter';
@@ -83,7 +100,6 @@ export interface MapSegment {
   end: Position;
   expression: Expression;
   next: PathSegment | null; 
-  symbol: string | null;
 }
 
 export interface IndexSegment {
@@ -116,8 +132,6 @@ export interface SimplePrefixExpression extends ExpressionBase<'negate_expressio
   expression: Expression;
 }
 
-export type SymbolExpression = ExpressionBase<'wildcard_expression' | 'descendant_expression' | 'parent_expression'>
-
 export interface GroupExpression extends ExpressionBase<'group_expression'> {
   expression: Expression | undefined;
 }
@@ -138,10 +152,6 @@ export interface IdentifierExpression extends ExpressionBase<'identifier_express
   value: string;
 }
 
-export interface FieldExpression extends ExpressionBase<'field_expression'> {
-  value: string;
-}
-
 export interface FunctionExpression extends ExpressionBase<'function_expression'> {
   parameters: string[];
   body: Expression;
@@ -154,9 +164,7 @@ export type PrefixExpression =
   | IdentifierExpression
   | FunctionExpression
   | SimplePrefixExpression
-  | GroupExpression
-  | FieldExpression
-  | SymbolExpression;
+  | GroupExpression;
 
 export type Expression = InfixExpression | PrefixExpression;
 

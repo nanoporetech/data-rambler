@@ -1,6 +1,7 @@
 import type { ObjectExpression } from '../../parser/expression.type';
 import type { SimpleObject, SimpleValue } from '../../SimpleValue.type';
-import { eval_any_expr, ExpressionEnvironment, extended_typeof } from '../expression';
+import { eval_any_expr, ExpressionEnvironment } from '../expression';
+import { extended_typeof } from '../functions';
 
 export function eval_object_expr(ctx: ExpressionEnvironment, expr: ObjectExpression, value: SimpleValue): SimpleObject {
   const result: SimpleObject = {};

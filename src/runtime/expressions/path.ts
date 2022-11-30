@@ -1,7 +1,8 @@
 import type { ContextSegment, Expression, FieldExpression, FilterSegment, IndexSegment, PathExpression, PathSegment, ReduceSegment, SortSegment } from '../../parser/expression.type';
 import { Range } from '../../Range';
 import type { SimpleArray, SimpleObject, SimpleValue } from '../../SimpleValue.type';
-import { eval_any_expr, ExpressionEnvironment, extended_typeof } from '../expression';
+import { eval_any_expr, ExpressionEnvironment } from '../expression';
+import { extended_typeof } from '../functions';
 
 export type Sequence = SimpleArray & { sequence: true };
 

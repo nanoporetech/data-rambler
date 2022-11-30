@@ -31,7 +31,7 @@ const SYMBOLS = new Set([
 ]);
 
 export function is_identifier(ctx: ScanContext, offset = 0): boolean {
-  return /^[_a-z$]$/i.test(peek_char(ctx, offset) ?? '');
+  return /^[\p{L}_$]$/ui.test(peek_char(ctx, offset) ?? '');
 }
 
 export function is_number(ctx: ScanContext, offset = 0) : boolean {

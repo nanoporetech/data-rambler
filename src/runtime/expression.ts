@@ -9,6 +9,7 @@ import { eval_field_expr, eval_parent_expr, eval_path_expr, eval_wild_expr } fro
 import { eval_object_expr } from './expressions/object';
 import { eval_array_expr } from './expressions/array';
 import { eval_range_expr } from './expressions/range';
+import { cast_bool, cast_string, equals, extended_typeof } from './functions';
 
 export function eval_root_expr(runtime: Runtime, expr: Expression, value: SimpleValue, bindings: Record<string, SimpleValue>): SimpleValue {
   const result = eval_any_expr({ ...runtime.globals, ...bindings, $: value }, expr, value);
@@ -122,7 +123,7 @@ export function eval_simple_prefix_expr (ctx: ExpressionEnvironment, expr: Simpl
 
   switch(expr.type) {
     case 'negate_expression': enforce_number(expr.expression, intermediate); return -intermediate;
-    case 'not_expression':    return !intermediate;
+    case 'not_expression':    return !cast_bool(intermediate);
     case 'typeof_expression': return extended_typeof(intermediate);
   }
 }
@@ -135,8 +136,7 @@ export function eval_equality_expr(ctx: ExpressionEnvironment, expr: EqualityExp
     return false;
   }
 
-  const strict = left === right;
-  // TODO support deep equality
+  const strict = equals(left, right);
   return expr.type === 'equals_expression' === strict;
 }
 
@@ -209,35 +209,7 @@ export function eval_call_expr (ctx: ExpressionEnvironment, expr: CallExpression
 export function eval_concat_expr (ctx: ExpressionEnvironment, expr: BinaryExpression<'concat_expression'>, value: SimpleValue): SimpleValue {
   const left = eval_any_expr(ctx, expr.left, value);
   const right = eval_any_expr(ctx, expr.right, value);
-  return `${stringify(left)}${stringify(right)}`;
-}
-
-
-
-export function extended_typeof(value: unknown): string {
-  if (value === null) {
-    return 'null';
-  }
-  const type = typeof value;
-  
-  if (type !== 'object') {
-    return type;
-  }
-  return Array.isArray(value) ? 'array' : 'object';
-}
-
-export function stringify(value: unknown): string {
-  // TODO improve me
-  switch (typeof value) {
-    case 'number':
-    case 'string':
-    case 'boolean':
-      return value.toString();
-  }
-  if (Array.isArray(value)) {
-    return `[${value.map(val => stringify(val)).join(',')}]`;
-  }
-  return '';
+  return `${cast_string(left) ?? ''}${cast_string(right) ?? ''}`;
 }
 
 export function enforce_number(node: Expression, value: unknown): asserts value is number {

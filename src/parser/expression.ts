@@ -10,7 +10,7 @@ import type { ParserContext } from './parser_context.type';
 add_infix_parselet ('symbol:,',           1, parse_comma_expression);
 
 add_infix_parselet ('symbol:?',           2, parse_conditional_expression);
-add_infix_parselet ('symbol::=',           2, parse_assignment_expression);
+add_infix_parselet ('symbol::=',          2, parse_assignment_expression);
 
 add_infix_parselet ('symbol:??',          3, parse_coalescing_expression);
 add_infix_parselet ('identifier:or',      3, parse_logical_or_expression);
@@ -49,13 +49,13 @@ add_infix_parselet ('symbol:^',           11, parse_path_expression);
 add_infix_parselet ('symbol:{',           11, parse_path_expression);
 add_infix_parselet ('symbol:#',           11, parse_path_expression);
 
-add_infix_parselet ('symbol:~>',		  12, parse_chain_expression);
+add_infix_parselet ('symbol:~>',		      12, parse_chain_expression);
 
 add_infix_parselet ('symbol:(',           13, parse_call_expression);
 
 
-add_prefix_parselet('symbol:*', 		  14, parse_wildcard_expression);
-add_prefix_parselet('symbol:%', 		  14, parse_parent_expression);
+add_prefix_parselet('symbol:*', 		      14, parse_wildcard_expression);
+add_prefix_parselet('symbol:%', 		      14, parse_parent_expression);
 add_prefix_parselet('symbol:(',           14, parse_group_expression);
 add_prefix_parselet('number',             14, parse_number_literal);
 add_prefix_parselet('string',             14, parse_string_literal);

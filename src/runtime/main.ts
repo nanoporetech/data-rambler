@@ -89,7 +89,7 @@ export function create_reference_context (runtime: Runtime): ReferenceContext {
   return {
     runtime,
     references: {},
-    locals: new Set,
+    locals: new Set(Object.keys(runtime.globals)),
   };
 }
 interface ReferenceContext {
@@ -201,7 +201,6 @@ export function list_references(ctx: ReferenceContext, expr: Expression): void {
         ctx.locals.add(symbol);
         break;
       }
-      // DEBUG
       console.warn(`ReferenceError: ${symbol} is not defined`);
       break;
     }

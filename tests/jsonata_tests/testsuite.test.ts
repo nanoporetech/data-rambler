@@ -42,7 +42,7 @@ const SKIP_GROUPS = [
   'tail-recursion',
   // 'transform',
   'regex',
-  'sorting',
+  // 'sorting',
   'parent-operator',
   'partial-application',
   'lambdas',

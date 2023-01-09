@@ -127,8 +127,30 @@ export function eval_reduce_op(ctx: ExpressionEnvironment, expr: ReduceSegment, 
   return create_sequence(result);
 }
 
-export function eval_sort_op(_ctx: ExpressionEnvironment, _expr: SortSegment, _sequence: Sequence): Sequence {
-  throw new Error('NOT IMPLEMENTED');
+export function eval_sort_op(ctx: ExpressionEnvironment, expr: SortSegment, sequence: Sequence): Sequence {
+  return create_sequence(sequence
+    .map(value => {
+      return {
+        value,
+        elements: expr.elements.map(({ expression }) => eval_any_expr(ctx, expression, value))
+      };
+    })
+    .sort((left, right) => {
+      for (let i = 0; i < expr.elements.length; i += 1) {
+        const le = left.elements[i]!;
+        const re = right.elements[i]!;
+        const m = expr.elements[i]?.ascending ? 1 : -1;
+
+        if (le > re) {
+          return m;
+        }
+        if (le < re) {
+          return -m;
+        }
+      }
+      return 0;
+    })
+    .map(({ value }) => value));
 }
 
 export function eval_index_op(ctx: ExpressionEnvironment, op: IndexSegment, sequence: Sequence): Sequence {

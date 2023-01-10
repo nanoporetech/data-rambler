@@ -1,3 +1,4 @@
+import { Range } from '../Range';
 import type { SimpleValue } from '../SimpleValue.type';
 import type { FunctionType, Type } from './Type.type';
 
@@ -253,7 +254,7 @@ export function can_assign_value_to (value: SimpleValue, target: Type): boolean 
   }
 
   if ('dictionary' in target) {
-    if (typeof value !== 'object' || Array.isArray(value) || value === null) {
+    if (typeof value !== 'object' || Array.isArray(value) || value === null || value instanceof Range) {
       return false;
     }
     if (target.dictionary === ANY) {

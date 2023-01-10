@@ -113,7 +113,10 @@ export function attempt_unwrap_quoted_field (expr: Expression): Expression {
 
 export function parse_filter_segment (ctx: ParserContext): FilterSegment {
   const { start } = ensure_token(ctx, 'symbol', '[');
-  const expression = parse_expression(ctx); // default precedence inside the brackets
+  let expression;
+  if (!match_token(ctx, 'symbol', ']')) {
+    expression = parse_expression(ctx); // default precedence inside the brackets
+  }
   const { end } = ensure_token(ctx, 'symbol', ']');
 
   return {

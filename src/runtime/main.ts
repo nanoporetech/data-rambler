@@ -210,7 +210,10 @@ export function list_references(ctx: ReferenceContext, expr: Expression): void {
 function list_segment_reference(ctx: ReferenceContext, seg: PathSegment) {
   switch (seg.type) {
     case 'filter':
-      return list_references(ctx, seg.expression);
+      if (seg.expression) {
+        list_references(ctx, seg.expression);
+      }
+      return;
     case 'sort':
       for (const elem of seg.elements) {
         list_references(ctx, elem.expression);

@@ -62,8 +62,14 @@ export function eval_path_segment(ctx: ExpressionEnvironment, op: PathSegment, s
 export function eval_filter_op(ctx: ExpressionEnvironment, expr: FilterSegment, sequence: Sequence): Sequence {
   const result = create_sequence();
 
+  const filter_expression = expr.expression;
+
+  if (!filter_expression) {
+    return sequence.length === 1 ? create_sequence(sequence) : sequence;
+  }
+
   const match = (val: SimpleValue, i: number, l: number): boolean => {
-    const predicate = eval_any_expr(ctx, expr.expression, val);
+    const predicate = eval_any_expr(ctx, filter_expression, val);
     if (predicate instanceof Range) {
       return predicate.includes(i);
     }

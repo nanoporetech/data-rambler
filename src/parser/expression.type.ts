@@ -67,7 +67,7 @@ export interface FilterSegment {
   type: 'filter';
   start: Position;
   end: Position;
-  expression: Expression;
+  expression: Expression | undefined;
 }
 
 export interface SortSegment {

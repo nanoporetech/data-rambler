@@ -10,6 +10,8 @@ import { eval_object_expr } from './expressions/object';
 import { eval_array_expr } from './expressions/array';
 import { eval_range_expr } from './expressions/range';
 import { cast_bool, cast_string, equals, extended_typeof } from './functions';
+import { can_assign_value_to, FUNCTION, stringify_type, UNDEFINED, value_typeof } from './Type';
+import type { TypedFunction } from './functions.type';
 
 export function eval_root_expr(runtime: Runtime, expr: Expression, value: SimpleValue, bindings: Record<string, SimpleValue>): SimpleValue {
   const result = eval_any_expr({ ...runtime.globals, ...bindings, $: value }, expr, value);
@@ -203,7 +205,56 @@ export function eval_call_expr (ctx: ExpressionEnvironment, expr: CallExpression
   if (typeof fn !== 'function') {
     throw new Error('Attempted to invoke a non-function'); // TODO improve message
   }
-  return fn(...expr.arguments.map(arg => eval_any_expr(ctx, arg, value)));
+  const signature = (fn as TypedFunction).SIGNATURE ?? FUNCTION;
+  const args = [];
+  let i = 0;
+
+  const min_arity = signature.parameters.filter(type => {
+    if ('union' in type) {
+      return !type.union.includes(UNDEFINED);
+    }
+    return true;
+  }).length;
+
+  const max_arity = signature.rest ? Infinity : signature.parameters.length;
+
+  if (expr.arguments.length < min_arity) {
+    throw new Error(`Expected ${min_arity} arguments, but got ${expr.arguments.length}.`);
+  }
+  if (expr.arguments.length > max_arity) {
+    throw new Error(`Expected ${max_arity} arguments, but got ${expr.arguments.length}.`);
+  }
+
+  // NOTE start by validating all arguments against parameters
+  for (const child_expr of expr.arguments) {
+    const param = signature.parameters[i ++] ?? signature.rest;
+    let arg = eval_any_expr(ctx, child_expr, value);
+
+    if (!param) {
+      // unreachable
+      throw new Error('Missing parameter!');
+    }
+
+    // WARN unions that contain 'a' will not respect this magic conversion
+    if ('array' in param) {
+      if (arg === undefined) {
+        arg = [];
+      } else if (!Array.isArray(arg)) {
+        arg = [ arg ];
+      }
+    }
+
+    if (!can_assign_value_to(arg, param)) {
+      if (arg === undefined) {
+        return undefined;
+      }
+      throw new Error(`Argument of type '${stringify_type(value_typeof(arg, true))}' is not assignable to parameter of type '${stringify_type(param)}'.`);
+    }
+
+    args.push(arg);
+  }
+
+  return fn(...args);
 }
 
 export function eval_concat_expr (ctx: ExpressionEnvironment, expr: BinaryExpression<'concat_expression'>, value: SimpleValue): SimpleValue {

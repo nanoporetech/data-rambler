@@ -1,7 +1,7 @@
 export interface FunctionType {
   function: Type;
   parameters: Type[];
-  rest?: Type;
+  rest: Type | undefined;
 }
 
 export interface SimpleType {

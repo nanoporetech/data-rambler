@@ -3,6 +3,8 @@ import type { Emitter } from './Emitter';
 import type { Environment } from './Runtime.type';
 
 import { functions } from './functions';
+import { parse_function_type } from './Type';
+import type { TypedFunction } from './functions.type';
 
 export class Runtime {
   private scope: Environment[] = [];
@@ -51,8 +53,8 @@ export class Runtime {
     }
     top[symbol] = source;
   }
-  declare_function (symbol: string, _type: string, fn: SimpleFunction): void {
-    // TODO we actually need to parse the type and store it somewhere
+  declare_function (symbol: string, type: string, fn: SimpleFunction): void {
+    (fn as TypedFunction).SIGNATURE = parse_function_type(type);
     this.declare_global(symbol, fn);
   }
   declare_global (symbol: string, value: SimpleValue): void {

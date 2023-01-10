@@ -1,14 +1,18 @@
 import type { SimpleArray, SimpleObject, SimpleValue } from '../SimpleValue.type';
 import { Range } from '../Range';
+import { parse_function_type } from './Type';
+import type { FunctionType } from './Type.type';
+import type { TypedFunction } from './functions.type';
 
 const un = undefined;
 
 // eslint-disable-next-line @typescript-eslint/ban-types
 export const functions: Record<string, Function> = {};
+export const function_signatures: Record<string, FunctionType> = {};
 
 // eslint-disable-next-line @typescript-eslint/ban-types
-function def(name: string, _type: string, fn: Function): void {
-  // TODO actually parse/register the type
+function def(name: string, type: string, fn: Function): void {
+  (fn as TypedFunction).SIGNATURE = parse_function_type(type);
   functions[name] = fn;
 }
 
@@ -155,77 +159,75 @@ export function format_units(value: number, unit: string, options: PrefixOptions
 
 
 // String Functions
-def('string', 'xb?:s', cast_string);
-def('length', 's:n', (p0: string) => p0 !== un ? [...p0].length : un);
-def('slice', '', (p0: string, start: number, end?: number) => p0?.slice(start, end));
-def('substring', '', (p0: string, p1: number, p2: number) => {
+def('string', 'xb?', cast_string);
+def('length', 's', (p0: string) => p0 !== un ? [...p0].length : un);
+def('slice', 'snn?', (p0: string, start: number, end?: number) => p0?.slice(start, end));
+def('substring', 'snn', (p0: string, p1: number, p2: number) => {
   const start = p1 < 0 ? p0.length + 1 : p1;
   const end = p2 && start + p2; 
   return p0.slice(start,end);
 });
-def('substringAfter', '', (p0: string, p1: string) => p0.split(p1)[1] ?? p0);
-def('substringBefore', '', (p0: string, p1: string) => p0.split(p1)[0]);
-def('lowercase', 's:s', (p0: string) => p0.toLowerCase());
-def('uppercase', 's:s', (p0: string) => p0.toUpperCase());
-def('trim', 's:s', (p0: string) => p0.trim());
-def('pad', 'sns?:s', (p0: string, p1: number, p2?: string) => p1 > 0 ? p0.padEnd(p1, p2) : p0.padStart(p1, p2));
-def('contains', '', () => { throw new Error('NOT IMPLEMENTED');}); // awaiting regex
-def('split', '', () => { throw new Error('NOT IMPLEMENTED');}); // awaiting regex
-def('join', 'a<s>s?:s', (p0: string[], p1?: string) => p0.join(p1 ?? ''));
-def('match', '', () => { throw new Error('NOT IMPLEMENTED');}); // awaiting regex
-def('replace', '', () => { throw new Error('NOT IMPLEMENTED');}); // awaiting regex
-def('eval', '', () => { throw new Error('UNSUPPORTED');});  // just evil
-def('base64encode', '', (p0: string) => btoa(p0)); // probably want this to go away
-def('base64decode', '', (p0: string) => atob(p0)); // probably want this to go away
-def('format', '', (p0: string | undefined, p1: unknown[]) => {
-  if (p0 === un) {
-    return un;
-  }
+def('substringAfter', 'ss', (p0: string, p1: string) => p0.split(p1)[1] ?? p0);
+def('substringBefore', 'ss', (p0: string, p1: string) => p0.split(p1)[0]);
+def('lowercase', 's', (p0: string) => p0.toLowerCase());
+def('uppercase', 's', (p0: string) => p0.toUpperCase());
+def('trim', 's', (p0: string) => p0.trim());
+def('pad', 'sns?', (p0: string, p1: number, p2?: string) => p1 > 0 ? p0.padEnd(p1, p2) : p0.padStart(p1, p2));
+def('contains', 's(sf)', () => { throw new Error('NOT IMPLEMENTED');}); // awaiting regex
+def('split', 's(sf)n?', () => { throw new Error('NOT IMPLEMENTED');}); // awaiting regex
+def('join', 'a<s>s?', (p0: string[], p1?: string) => p0.join(p1 ?? ''));
+def('match', 'sfn?', () => { throw new Error('NOT IMPLEMENTED');}); // awaiting regex
+def('replace', 's(sf)(sf)n?', () => { throw new Error('NOT IMPLEMENTED');}); // awaiting regex
+def('eval', 's', () => { throw new Error('UNSUPPORTED');});  // just evil
+def('base64encode', 's', (p0: string) => btoa(p0)); // probably want this to go away
+def('base64decode', 's', (p0: string) => atob(p0)); // probably want this to go away
+def('format', 'sa', (p0: string, p1: unknown[]) => {
   return p0.replace(/\$\{([0-9]*)\}/g, (_, v, i) => cast_string(p1[+v ?? i]) ?? '');
 });
-def('decodeUrl', 's:s', (p0: string) => p0 === un ? un : decodeURI(p0));
-def('decodeUrlComponent', 's:s', (p0: string) => p0 === un ? un : decodeURIComponent(p0));
-def('encodeUrl', 's:s', (p0: string) => p0 === un ? un : encodeURI(p0));
-def('encodeUrlComponent', 's:s', (p0: string) => p0 === un ? un : encodeURIComponent(p0));
+def('decodeUrl', 's', (p0: string) => p0 === un ? un : decodeURI(p0));
+def('decodeUrlComponent', 's', (p0: string) => p0 === un ? un : decodeURIComponent(p0));
+def('encodeUrl', 's', (p0: string) => p0 === un ? un : encodeURI(p0));
+def('encodeUrlComponent', 's', (p0: string) => p0 === un ? un : encodeURIComponent(p0));
 
 // Number Functions
-def('number', 'x:m', cast_number);
-def('abs', 'n:n', (p0: number) => Math.abs(p0));
-def('floor', 'n:n', (p0: number) => Math.floor(p0));
-def('ceil', 'n:n', (p0: number) => Math.ceil(p0));
-def('clamp', 'nnn:n', (p0: number, p1 = -Infinity, p2 = Infinity) => Math.max(p1, Math.min(p0, p2)));
-def('round', 'nn?:n', (p0: number, p1 = 0) => {
+def('number', 'x', cast_number);
+def('abs', 'n', (p0: number) => Math.abs(p0));
+def('floor', 'n', (p0: number) => Math.floor(p0));
+def('ceil', 'n', (p0: number) => Math.ceil(p0));
+def('clamp', 'nn?n?', (p0: number, p1 = -Infinity, p2 = Infinity) => Math.max(p1, Math.min(p0, p2)));
+def('round', 'nn?', (p0: number, p1 = 0) => {
   const m = 10 ** p1;
   return Math.round(p0 * m) / m;
 });
-def('power', '', (p0: number, p1: number) => Math.pow(p0, p1));
-def('sqrt', 'n:n', (p0: number) => Math.sqrt(p0));
+def('power', 'nn', (p0: number, p1: number) => Math.pow(p0, p1));
+def('sqrt', 'n', (p0: number) => Math.sqrt(p0));
 def('random', ':n', () => Math.random());
-def('formatNumber', '', () => { throw new Error('UNSUPPORTED');}); // weird xpath nonsense
-def('formatBase', '', (p0: number, p1?: number) => p0.toString(p1));
-def('formatInteger', '', () => { throw new Error('UNSUPPORTED');}); // weird xpath nonsense
-def('parseInteger', '', () => { throw new Error('UNSUPPORTED');}); // weird xpath nonsense
-def('formatUnit', '', format_units);
+def('formatNumber', 'nso?', () => { throw new Error('UNSUPPORTED');}); // weird xpath nonsense
+def('formatBase', 'nn?', (p0: number, p1?: number) => p0.toString(p1));
+def('formatInteger', 'ns', () => { throw new Error('UNSUPPORTED');}); // weird xpath nonsense
+def('parseInteger', 'ss', () => { throw new Error('UNSUPPORTED');}); // weird xpath nonsense
+def('formatUnit', 'nso?', format_units);
 
 // Aggregation Functions
-def('sum', 'a<n>:n', (p0: number[]) => (Array.isArray(p0) ? p0: [p0]).reduce((a, v) => a + v, 0));
-def('max', 'a<n>:n', (p0: number[]) => p0.length ? Math.max(...p0) : un);
-def('min', 'a<n>:n', (p0: number[]) => p0.length ? Math.min(...p0) : un);
-def('average', 'a<n>:n', (p0: number[]) => p0.length ? p0.reduce((a, v) => a + v, 0) / p0.length : un);
+def('sum', 'a<n>', (p0: number[]) => (Array.isArray(p0) ? p0: [p0]).reduce((a, v) => a + v, 0));
+def('max', 'a<n>', (p0: number[]) => p0.length ? Math.max(...p0) : un);
+def('min', 'a<n>', (p0: number[]) => p0.length ? Math.min(...p0) : un);
+def('average', 'a<n>', (p0: number[]) => p0.length ? p0.reduce((a, v) => a + v, 0) / p0.length : un);
 
 // Boolean Functions
-def('boolean', '', cast_bool);
-def('not', '', (p0: unknown) => !cast_bool(p0));
-def('exists', 'x:b', (p0: unknown) => p0 !== un);
+def('boolean', 'x', cast_bool);
+def('not', 'x', (p0: unknown) => !cast_bool(p0));
+def('exists', 'x', (p0: unknown) => p0 !== un);
 
 // Array Functions
-def('count', 'a:n', (p0: unknown[]) => (Array.isArray(p0) ? p0: [p0]).length);
-def('append', '', (p0: unknown[], p1: unknown[]) => p0.concat(p1));
-def('sort', '', () => { throw new Error('NOT IMPLEMENTED');}); // signature is incompatible with arr.sort and requires hand rolled sort
-def('reverse', 'a:a', (p0: unknown[]) => p0.reverse());
-def('shuffle', '', () => { throw new Error('NOT IMPLEMENTED');}); // TODO
-def('distinct', 'a:a', (p0: unknown[]) => Array.from(new Set(p0)));
-def('zip', 'a+:a', (...p: Array<SimpleArray | undefined>[]) => {  
+def('count', 'a', (p0: unknown[]) => (Array.isArray(p0) ? p0: [p0]).length);
+def('append', 'aa', (p0: unknown[], p1: unknown[]) => p0.concat(p1));
+def('sort', 'af?', () => { throw new Error('NOT IMPLEMENTED');}); // signature is incompatible with arr.sort and requires hand rolled sort
+def('reverse', 'a', (p0: unknown[]) => p0.reverse());
+def('indexOf', 'ax', (p0: unknown[], p1: unknown) => p0.indexOf(p1));
+def('shuffle', 'a', () => { throw new Error('NOT IMPLEMENTED');}); // TODO
+def('distinct', 'a', (p0: unknown[]) => Array.from(new Set(p0)));
+def('zip', 'a+', (...p: Array<SimpleArray | undefined>[]) => {  
   if (p.length === 0) {
     return [];
   }
@@ -258,12 +260,13 @@ def('zip', 'a+:a', (...p: Array<SimpleArray | undefined>[]) => {
 
 
 // Object Functions 
-def('keys', 'x:a<s>', keys);
-def('values', 'o:a<x>', (p0: SimpleObject) => Object.values(p0));
-def('lookup', '', (p0: Record<string, unknown>[], p1: string) => p0.map(v => v[p1]));
-def('spread', 'o:a<a<x>>', (p0: SimpleObject) => Object.entries(p0));
-def('merge', 'o:o', (p0: SimpleObject, p1: SimpleObject) => ({...p0, ...p1}));
-def('sift', 'of?:o', (p0: Record<string, unknown> | undefined, p1?: (v: unknown, k: string, a: Record<string, unknown>) => unknown) => {
+def('keys', 'x', keys);
+def('clone', 'x', (p0: SimpleValue) => JSON.parse(JSON.stringify(p0)) as SimpleValue);
+def('values', 'o', (p0: SimpleObject) => Object.values(p0));
+def('lookup', 'os', (p0: Record<string, unknown>[], p1: string) => p0.map(v => v[p1]));
+def('spread', 'o', (p0: SimpleObject) => Object.entries(p0));
+def('merge', 'oo', (p0: SimpleObject, p1: SimpleObject) => ({...p0, ...p1}));
+def('sift', 'of?', (p0: Record<string, unknown> | undefined, p1?: (v: unknown, k: string, a: Record<string, unknown>) => unknown) => {
   if (p0 === un) {
     return un;
   }
@@ -276,40 +279,40 @@ def('sift', 'of?:o', (p0: Record<string, unknown> | undefined, p1?: (v: unknown,
   }
   return Object.fromEntries(pairs);
 });
-def('each', 'of:a', (p0: SimpleObject | undefined, p1: (v: SimpleValue, k: string) => SimpleValue) => {
+def('each', 'of', (p0: SimpleObject | undefined, p1: (v: SimpleValue, k: string) => SimpleValue) => {
   if (p0 === un) {
     return un;
   }
   return Object.entries(p0).map(([k, v]) => p1(v, k));
 });
-def('error', '', (msg: string) => { throw new Error(msg); });
-def('assert', '', (condition: unknown, msg: string) => { 
+def('error', 's', (msg: string) => { throw new Error(msg); });
+def('assert', 'xs', (condition: unknown, msg: string) => { 
   if (!condition) {
     throw new Error(msg);  
   }
 });
-def('type', '', extended_typeof);
-def('zipObject', 'a<a>:o', (p0: [string, unknown][]) => Object.fromEntries(p0));
+def('type', 'x', extended_typeof);
+def('fromEntries', 'a<a>', (p0: [string, unknown][]) => Object.fromEntries(p0));
 
 // Date/Time Functions
 def('now', '', () => (new Date).toISOString());
 def('millis', '', () => Date.now());
-def('fromMillis', '', (p0: number) => (new Date(p0)).toISOString());
-def('toMillis', '', (p0: string) => (new Date(p0)).getTime());
-def('formatTime', '', (p0: string | number, opts?: Intl.DateTimeFormatOptions) => (new Date(p0).toLocaleString(undefined, opts)));
+def('fromMillis', 'n', (p0: number) => (new Date(p0)).toISOString());
+def('toMillis', 's', (p0: string) => (new Date(p0)).getTime());
+def('formatTime', '(sn)o?', (p0: string | number, opts?: Intl.DateTimeFormatOptions) => (new Date(p0).toLocaleString(undefined, opts)));
 
 // Higher Order Functions
-def('map', '', (p0: unknown[], p1?: (v: unknown, i: number, a: unknown[]) => unknown) => { 
+def('map', 'af?', (p0: unknown[], p1?: (v: unknown, i: number, a: unknown[]) => unknown) => { 
   if (p1 === un) {
     return p0;
   }
   return p0.map(p1);
 });
-def('filter', 'af:a', (p0: unknown[], p1?: (v: unknown, i: number, a: unknown[]) => unknown) => { 
+def('filter', 'af?', (p0: unknown[], p1?: (v: unknown, i: number, a: unknown[]) => unknown) => { 
   if (p1 === un) {
     return p0;
   }
   return p0.filter(p1);
 });
 def('single', 'af?', (p0: unknown[], p1?: (v: unknown, i: number, a: unknown[]) => unknown) => p1 ? p0?.find(p1) : p0[0]);
-def('reduce', 'af', () => { throw new Error('NOT IMPLEMENTED'); }); // TODO
+def('reduce', 'af?', () => { throw new Error('NOT IMPLEMENTED'); }); // TODO

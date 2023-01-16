@@ -32,7 +32,7 @@ export function evaluate_statement(runtime: Runtime, stmt: Statement): void {
 
   const target = runtime.resolve_source(stmt.name);
   if (!target) {
-    throw new Error(`ReferenceError: ${stmt.name} is not defined`);
+    throw new Error(`ReferenceError: "${stmt.name}" is not defined`);
   }
 
   if (stmt.type === 'input_statement') {
@@ -192,7 +192,7 @@ export function list_references(ctx: ReferenceContext, expr: Expression): void {
 
     case 'identifier_expression': {
       const symbol = expr.value;
-      if (ctx.locals.has(symbol)) {
+      if (symbol === '' || ctx.locals.has(symbol)) {
         break;
       }
       const stream = ctx.runtime.resolve_source(symbol);
@@ -201,7 +201,7 @@ export function list_references(ctx: ReferenceContext, expr: Expression): void {
         ctx.locals.add(symbol);
         break;
       }
-      console.warn(`ReferenceError: ${symbol} is not defined`);
+      console.warn(`ReferenceError: "${symbol}" is not defined`);
       break;
     }
   } 

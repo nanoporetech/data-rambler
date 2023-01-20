@@ -22,7 +22,7 @@ export class Emitter implements Input, Output {
     }
   }
 
-  static Combine (sources: Record<string, Emitter>): Output<SimpleObject> {
+  static Combine (sources: Record<string, Output>): Output<SimpleObject> {
     const listeners = new Set<Listener<SimpleObject>>();
     const combined_value: Record<string, SimpleValue> = {};
     let disposer: VoidFunction | null = null;

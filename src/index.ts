@@ -11,6 +11,7 @@ import type { Output } from './runtime/Emitter.type';
 import type { SimpleObject, SimpleValue } from './SimpleValue.type';
 
 export { Runtime } from './runtime/Runtime';
+export { Emitter } from './runtime/Emitter';
 export { parse_expression } from './parser/expression';
 export { parse } from './parser/parser';
 export { scan } from './scanner/scanner';
@@ -18,6 +19,9 @@ export { scan } from './scanner/scanner';
 export type { Input, Output, Listener } from './runtime/Emitter.type';
 export type { SimpleValue, SimpleFunction, SimpleArray, SimpleObject } from './SimpleValue.type';
 export type { JSONValue, JSONArray, JSONObject } from './JSON.type';
+export type { Module, Statement, Expression } from './parser/expression.type';
+export type { Token } from './scanner/token.type';
+export type { Position } from './scanner/Position.type';
 
 export function evaluate_module(runtime: Runtime, source: string): void {
   const tokens = scan(source);

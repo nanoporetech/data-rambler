@@ -74,9 +74,15 @@ export function create_expression_stream(runtime: Runtime, expr: Expression): Ou
 
   // STEP 2b - otherwise return new stream that is bound to parent streams and evaluates the expression in that context when the parent updates
   const source = Emitter.Combine(ctx.references);
-  const watch = (fn: Listener) => {
+  const watch = (next: Listener, error?: Listener<Error>) => {
     return source.watch(value => {
-      fn(eval_root_expr(runtime, expr, undefined, value));
+      let result;
+      try {
+        result = eval_root_expr(runtime, expr, undefined, value);
+      } catch (err) {
+        error?.(err instanceof Error ? err : new Error('Unexpected runtime error'));
+      }
+      next(result);
     });
   };
 

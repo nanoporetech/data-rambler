@@ -22,26 +22,53 @@ export class Emitter implements Input, Output {
     }
   }
 
+  static Resolve<T> (source: Output<T | Promise<T>>): Output<T | undefined> {
+    const watch = (on_next: Listener<T | undefined>, on_error?: Listener<Error>) => {
+      let iteration = 0;
+      const handoff = async (value: T | Promise<T>) => {
+        const current = iteration;
+        let result: T | undefined;
+        
+        try {
+          result = await value;
+        } catch (error) {
+          on_error?.(error instanceof Error ? error : new Error('Unexpected runtime error'));
+        }
+        if (iteration > current) {
+          return;
+        }
+        iteration += 1;
+        on_next(result);
+      };
+
+      return source.watch(value => void handoff(value));
+    };
+
+    return {
+      watch
+    };
+  }
+
   static Combine (sources: Record<string, Output>): Output<SimpleObject> {
     const listeners = new Set<Listener<SimpleObject>>();
     const combined_value: Record<string, SimpleValue> = {};
     let disposer: VoidFunction | null = null;
   
     const subscribe = () => {
-      const disposers = Object.entries(sources).map(([name, src]) => src.watch(value => {
-        // TODO we could resolve promises here
-        if (combined_value[name] === value) {
-          return;
-        }
-        combined_value[name] = value;
-        for (const fn of listeners) {
-          try {
-            fn(combined_value);
-          } catch {
-            // NOTE discard errors, we can't do much with them
+      const disposers = Object.entries(sources).map(([name, src]) =>
+        Emitter.Resolve(src).watch(value => {
+          if (combined_value[name] === value) {
+            return;
           }
-        }
-      }));
+          combined_value[name] = value;
+          for (const fn of listeners) {
+            try {
+              fn(combined_value);
+            } catch {
+              // NOTE discard errors, we can't do much with them
+            }
+          }
+        }));
   
       return () => disposers.forEach(fn => fn());
     };

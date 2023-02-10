@@ -1,5 +1,5 @@
 {
-  "version": "0.2.2",
+  "version": "0.2.3",
   "name": "@metrichor/data-rambler",
   "main": "cjs/index.js",
   "module": "mjs/index.mjs",
@@ -18,15 +18,15 @@
   "author": "Iain Shorter <iainshorter@gmail.com>",
   "license": "MPL-2.0",
   "devDependencies": {
-    "@types/jest": "^29.2.5",
-    "@typescript-eslint/eslint-plugin": "^5.48.1",
-    "@typescript-eslint/parser": "^5.48.1",
-    "eslint": "^8.31.0",
-    "jest": "^29.3.1",
-    "rollup": "^3.9.1",
+    "@types/jest": "^29.4.0",
+    "@typescript-eslint/eslint-plugin": "^5.51.0",
+    "@typescript-eslint/parser": "^5.51.0",
+    "eslint": "^8.33.0",
+    "jest": "^29.4.2",
+    "rollup": "^3.15.0",
     "rollup-plugin-typescript2": "^0.34.1",
-    "ts-jest": "^29.0.3",
-    "typescript": "^4.9.4"
+    "ts-jest": "^29.0.5",
+    "typescript": "^4.9.5"
   },
   "dependencies": {
     "ts-runtime-typecheck": "^2.6.0"

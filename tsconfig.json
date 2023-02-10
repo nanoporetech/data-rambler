@@ -3,6 +3,6 @@
 	  "allowJs": true
 	},
 	"extends": "./tsconfig.main.json",
-	"include": ["**/*.ts", "**/*.js"],
+	"include": ["**/*.ts", "**/*.js", "**/*.mjs"],
 	"exclude": ["./dist", "./node_modules"]
   }

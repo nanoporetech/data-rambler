@@ -8,5 +8,5 @@ export interface Input {
 }
 
 export interface Output<T = SimpleValue> {
-  watch (fn: Listener<T>): VoidFunction;
+  watch (next: Listener<T>, error?: Listener<Error>): VoidFunction;
 }

@@ -54,21 +54,30 @@ export class Emitter implements Input, Output {
     const combined_value: Record<string, SimpleValue> = {};
     let disposer: VoidFunction | null = null;
   
+    const update_value = (name: string, value: SimpleValue) => {
+      if (combined_value[name] === value) {
+        return;
+      }
+      combined_value[name] = value;
+      for (const fn of listeners) {
+        try {
+          fn(combined_value);
+        } catch {
+          // NOTE discard errors, we can't do much with them
+        }
+      }
+    };
+
     const subscribe = () => {
-      const disposers = Object.entries(sources).map(([name, src]) =>
-        Emitter.Resolve(src).watch(value => {
-          if (combined_value[name] === value) {
-            return;
+      const disposers = Object.entries(sources).map(([name, src]) => 
+        Emitter.Resolve(src).watch(
+          value => {
+            update_value(name, value);
+          }, () => {
+            // NOTE discard errors, we can't do much with them
+            update_value(name, undefined);
           }
-          combined_value[name] = value;
-          for (const fn of listeners) {
-            try {
-              fn(combined_value);
-            } catch {
-              // NOTE discard errors, we can't do much with them
-            }
-          }
-        }));
+        ));
   
       return () => disposers.forEach(fn => fn());
     };

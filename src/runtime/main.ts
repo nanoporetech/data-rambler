@@ -207,8 +207,7 @@ export function list_references(ctx: ReferenceContext, expr: Expression): void {
         ctx.locals.add(symbol);
         break;
       }
-      console.warn(`ReferenceError: "${symbol}" is not defined`);
-      break;
+      throw new Error(`ReferenceError: "${symbol}" is not defined`);
     }
   } 
 }

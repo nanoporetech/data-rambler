@@ -1,4 +1,4 @@
-import { consume_token, ensure_token, match_token, peek_token, previous_token } from '../parser_context';
+import { consume_token, ensure_token, match_token, peek_token } from '../parser_context';
 
 import type { ParserContext } from '../parser_context.type';
 import type { JSONArray, JSONObject, JSONValue } from '../../JSON.type'; 
@@ -10,25 +10,6 @@ import type { ArrayExpression, Expression, FieldExpression, FunctionExpression, 
 
 export function parse_expression_sequence (ctx: ParserContext, delimiter: [string, string], precedence = 0): Sequence<Expression> {
   return parse_sequence(ctx, delimiter, ctx => parse_expression(ctx, precedence));
-}
-
-export function parse_json_expression(ctx: ParserContext): JSONExpression {
-  const token = peek_token(ctx);
-
-  if (!token) {
-    unexpected_end_of_input();
-  }
-
-  const { start } = token;
-  const value = parse_json_value(ctx);
-  const { end } = previous_token(ctx);
-
-  return {
-    type: 'json_expression',
-    start,
-    end,
-    value
-  };
 }
 
 export function parse_number_literal(ctx: ParserContext): JSONExpression {

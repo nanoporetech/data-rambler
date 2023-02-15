@@ -8,7 +8,7 @@ export function parse_input_statement (ctx: ParserContext): InputStatement {
   const { start } = ensure_token(ctx, 'identifier', 'in');
   const name = ensure_token(ctx, 'identifier').value;
 
-  let default_value = null;
+  let default_value = undefined;
 
   if (match_token(ctx, 'symbol', '=')) {
     consume_token(ctx);

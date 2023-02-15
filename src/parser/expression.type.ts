@@ -165,7 +165,7 @@ export interface InputStatement {
   name: string;
   start: Position;
   end: Position;
-  default_value: JSONValue;
+  default_value: JSONValue | undefined;
 }
 
 export interface BlockStatement {

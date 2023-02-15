@@ -15,6 +15,7 @@ export { Emitter } from './runtime/Emitter';
 export { parse_expression } from './parser/expression';
 export { parse } from './parser/parser';
 export { scan } from './scanner/scanner';
+export { serialise } from './serialiser/serialiser';
 
 export type { Input, Output, Listener } from './runtime/Emitter.type';
 export type { SimpleValue, SimpleFunction, SimpleArray, SimpleObject } from './SimpleValue.type';

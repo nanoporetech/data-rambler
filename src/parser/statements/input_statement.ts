@@ -1,10 +1,10 @@
-import type { InputStatement } from '../expression.type';
+import type { Attribute, InputStatement } from '../expression.type';
 import { parse_json_value } from '../expressions/prefix';
 import { consume_token, ensure_token, match_token } from '../parser_context';
 import type { ParserContext } from '../parser_context.type';
 import { end_statement } from '../statement';
 
-export function parse_input_statement (ctx: ParserContext): InputStatement {
+export function parse_input_statement (ctx: ParserContext, attributes: Attribute[]): InputStatement {
   const { start } = ensure_token(ctx, 'identifier', 'in');
   const name = ensure_token(ctx, 'identifier').value;
 
@@ -23,5 +23,6 @@ export function parse_input_statement (ctx: ParserContext): InputStatement {
     start,
     end,
     default_value,
+    attributes,
   };
 }

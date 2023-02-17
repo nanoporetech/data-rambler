@@ -1,4 +1,5 @@
 import { unexpected_end_of_input, unexpected_token } from '../scanner/error';
+import type { Position } from '../scanner/Position.type';
 
 import type { Token, TokenTypes } from '../scanner/token.type';
 import type { ParserContext } from './parser_context.type';
@@ -9,7 +10,7 @@ export function peek_token(ctx: ParserContext, offset = 0): Token | undefined {
 
 export function consume_token(ctx: ParserContext): Token {
   if (tokens_remaining(ctx) === false) {
-    unexpected_end_of_input();
+    unexpected_end_of_input(current_position(ctx));
   }
   const ch = ctx.source[ctx.index];
   ctx.index += 1;
@@ -43,7 +44,12 @@ export function ensure_token(ctx: ParserContext, type: TokenTypes, value?: strin
   if (correct_type && correct_value) {
     return token;
   }
-  unexpected_token(token.value);
+  unexpected_token(token.value, token.start);
+}
+
+export function current_position(ctx: ParserContext): Position {
+  const last = peek_token(ctx, -1);
+  return last?.end ?? { column: 1, row: 1 };
 }
 
 export function previous_token(ctx: ParserContext): Token {

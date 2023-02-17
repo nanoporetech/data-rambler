@@ -1,10 +1,10 @@
 import { parse_expression } from '../expression';
-import type { OutputStatement } from '../expression.type';
+import type { Attribute, OutputStatement } from '../expression.type';
 import { ensure_token } from '../parser_context';
 import type { ParserContext } from '../parser_context.type';
 import { end_statement } from '../statement';
 
-export function parse_output_statement (ctx: ParserContext): OutputStatement {
+export function parse_output_statement (ctx: ParserContext,  attributes: Attribute[]): OutputStatement {
   const { start } = ensure_token(ctx, 'identifier', 'out');
   const name = ensure_token(ctx, 'identifier').value;
   
@@ -19,5 +19,6 @@ export function parse_output_statement (ctx: ParserContext): OutputStatement {
     expression,
     start,
     end,
+    attributes,
   };
 }

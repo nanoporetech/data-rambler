@@ -166,6 +166,7 @@ export interface InputStatement {
   start: Position;
   end: Position;
   default_value: JSONValue | undefined;
+  attributes: Attribute[];
 }
 
 export interface BlockStatement {
@@ -173,6 +174,7 @@ export interface BlockStatement {
   statements: Statement[];
   start: Position;
   end: Position;
+  attributes: Attribute[];
 }
 
 export interface LetStatement {
@@ -181,6 +183,7 @@ export interface LetStatement {
   expression: Expression;
   start: Position;
   end: Position;
+  attributes: Attribute[];
 }
 
 export interface OutputStatement {
@@ -189,10 +192,18 @@ export interface OutputStatement {
   expression: Expression;
   start: Position;
   end: Position;
+  attributes: Attribute[];
 }
 
 export type Statement = InputStatement | BlockStatement | LetStatement | OutputStatement;
 
+export interface Attribute {
+  type: 'attribute';
+  name: string;
+  parameters: JSONValue[];
+  start: Position;
+  end: Position;
+}
 export interface Module {
   type: 'module';
   start: Position;

@@ -1,32 +1,53 @@
 import type { ParserContext } from './parser_context.type';
 
 import { unexpected_end_of_input, unexpected_token } from '../scanner/error';
-import { consume_token, match_token, peek_token, previous_token } from './parser_context';
+import { consume_token, current_position, ensure_token, match_token, peek_token, previous_token } from './parser_context';
 
 import type { Position } from '../scanner/Position.type';
-import type { Statement } from './expression.type';
+import type { Attribute, Statement } from './expression.type';
 import { parse_block_statement } from './statements/block_statement';
 import { parse_input_statement } from './statements/input_statement';
 import { parse_let_statement } from './statements/let_statement';
 import { parse_output_statement } from './statements/output_statement';
+import { parse_json_value } from './expressions/prefix';
+import { parse_sequence } from './sequence';
 
-export function parse_statement(ctx: ParserContext): Statement {
+export function parse_statement(ctx: ParserContext, attributes: Attribute[] = []): Statement {
   const token = peek_token(ctx);
   if (!token) {
-    unexpected_end_of_input();
+    unexpected_end_of_input(current_position(ctx));
   }
   const { type, value } = token;
   if (type === 'identifier') {
     switch (value) {
-      case 'in': return parse_input_statement(ctx);
-      case 'let': return parse_let_statement(ctx);
-      case 'out': return parse_output_statement(ctx);
+      case 'in': return parse_input_statement(ctx, attributes);
+      case 'let': return parse_let_statement(ctx, attributes);
+      case 'out': return parse_output_statement(ctx, attributes);
     }
   }
-  if (type === 'symbol' && value === '{') {
-    return parse_block_statement(ctx);
+  if (type === 'symbol') {
+    switch (value) {
+      case '{': return parse_block_statement(ctx, attributes);
+      case '@': return parse_attribute(ctx, attributes);
+    }
   }
-  unexpected_token(value);
+  unexpected_token(value, token.start);
+}
+
+export function parse_attribute(ctx: ParserContext, attributes: Attribute[]): Statement {
+  const  { start } = ensure_token(ctx, 'symbol', '@');
+  const name = ensure_token(ctx, 'identifier').value;
+  const { elements: parameters, end } = parse_sequence(ctx, ['(', ')'], ctx => parse_json_value(ctx));
+
+  attributes.push({
+    type: 'attribute',
+    name,
+    parameters,
+    start,
+    end
+  });
+
+  return parse_statement(ctx, attributes);
 }
 
 export function end_statement(ctx: ParserContext): Position {
@@ -48,7 +69,7 @@ export function end_statement(ctx: ParserContext): Position {
   if (!current || current.start.row > previous.end.row) {
     return previous.end;
   }
-  unexpected_token(current.value);
+  unexpected_token(current.value, current.start);
 }
 
 export function should_end_statement(ctx: ParserContext): boolean {

@@ -1,21 +1,36 @@
 import type { SimpleFunction, SimpleValue } from '../SimpleValue.type';
-import type { Emitter } from './Emitter';
+import { Emitter } from './Emitter';
 import type { Environment } from './Runtime.type';
 
 import { functions } from './functions';
 import { parse_function_type } from './Type';
 import type { TypedFunction } from './functions.type';
+import type { Output, VoidFunction } from './Emitter.type';
 
 export class Runtime {
   private scope: Environment[] = [];
   private inputs: Environment = {};
   private outputs: Environment = {};
+  private subscriptions: VoidFunction[] = [];
+  generation = 0;
+
   readonly globals: Record<string, SimpleValue> = {
     ...(functions as Record<string, SimpleFunction>)
   };
 
   private get top(): Environment | undefined {
     return this.scope[0];
+  }
+
+  dispose () {
+    for (const cleanup of this.subscriptions) {
+      cleanup();
+    }
+    this.subscriptions.length = 0;
+  }
+  start_generation () {
+    this.generation += 1;
+    this.dispose();
   }
   /**
    * @package
@@ -31,19 +46,28 @@ export class Runtime {
   pop_scope (): void {
     this.scope.shift();
   }
-  declare_input (symbol: string, source: Emitter): void {
-    if (symbol in this.inputs) {
+  declare_input (symbol: string, update = false): void {
+    const existing = this.inputs[symbol];
+    if (existing) {
+      if (update && existing.generation < this.generation) {
+        return;
+      }
       throw new Error(`SyntaxError: Identifier '${symbol}' has already been declared`);
     }
-    this.inputs[symbol] = source;
+    this.inputs[symbol] = new Emitter(this.generation);
   }
-  declare_output (symbol: string, source: Emitter): void {
-    if (symbol in this.outputs) {
+  declare_output (symbol: string, update = false): void {
+    const existing = this.outputs[symbol];
+
+    if (existing) {
+      if (update && existing.generation < this.generation) {
+        return;
+      }
       throw new Error(`SyntaxError: Identifier '${symbol}' has already been declared`);
     }
-    this.outputs[symbol] = source;
+    this.outputs[symbol] = new Emitter(this.generation);
   }
-  declare_source (symbol: string, source: Emitter): void {
+  declare_source (symbol: string): void {
     const { top } = this;
     if (top === undefined) {
       throw new Error('SyntaxError: Cannot declare a new source outside of a module');
@@ -51,7 +75,8 @@ export class Runtime {
     if (symbol in top) {
       throw new Error(`SyntaxError: Identifier '${symbol}' has already been declared`);
     }
-    top[symbol] = source;
+    // NOTE scopes are always unique per evaluation, so it's not possible to locate a source stream
+    top[symbol] = new Emitter(0);
   }
   declare_function (symbol: string, type: string, fn: SimpleFunction): void {
     (fn as TypedFunction).SIGNATURE = parse_function_type(type);
@@ -74,5 +99,9 @@ export class Runtime {
   }
   resolve_input (symbol: string): Emitter | null {
     return this.inputs[symbol] ?? null;
+  }
+  bind_stream (stream: Output, target: Emitter) {
+    const sub = stream.watch(value => target.emit(value));
+    this.subscriptions.push(sub);
   }
 }

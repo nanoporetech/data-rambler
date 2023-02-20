@@ -5,6 +5,8 @@ export class Emitter implements Input, Output {
   private subscribers: Set<Listener> = new Set();
   private value: SimpleValue = undefined;
 
+  constructor (readonly generation: number) {}
+
   watch (fn: Listener): () => void {
     this.subscribers.add(fn);
     fn(this.value);

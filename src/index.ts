@@ -24,11 +24,14 @@ export type { Module, Statement, Expression } from './parser/expression.type';
 export type { Token } from './scanner/token.type';
 export type { Position } from './scanner/Position.type';
 
-export function evaluate_module(runtime: Runtime, source: string): void {
+export function evaluate_module(runtime: Runtime, source: string, update = false): void {
   const tokens = scan(source);
   const ast = parse(tokens);
   
-  evaluate_block(runtime, ast);
+  if (update) {
+    runtime.start_generation();
+  }
+  evaluate_block(runtime, ast, update);
 }
   
 export function evaluate_expression(runtime: Runtime, source: string): Output {

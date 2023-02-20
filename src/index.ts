@@ -38,7 +38,7 @@ export function evaluate_expression(runtime: Runtime, source: string): Output {
 
   const remaining = peek_token(ctx);
   if (remaining) {
-    unexpected_token(remaining.value);
+    unexpected_token(remaining.value, remaining.start);
   }
   
   return create_expression_stream(runtime, ast);
@@ -51,7 +51,7 @@ export function prepare_expression(runtime: Runtime, source: string): (value: Si
 
   const remaining = peek_token(ctx);
   if (remaining) {
-    unexpected_token(remaining.value);
+    unexpected_token(remaining.value, remaining.start);
   }
   
   return (value = undefined, bindings = {}) => eval_root_expr(runtime, expr, value, bindings);

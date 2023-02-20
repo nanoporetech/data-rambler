@@ -6,6 +6,7 @@ import { buffer_append, buffer_consume, buffer_start } from './text_buffer';
 import type { ScanContext } from './scan_context.type';
 import type { TextBuffer } from './text_buffer.type';
 import type { IdentifierToken, NumberToken, StringToken, SymbolToken, Token } from './token.type';
+import type { Position } from './Position.type';
 
 export function scan(source: string): Token[] {
   const ctx = create_scanner_context(source);
@@ -44,7 +45,7 @@ export function scan_token(ctx: ScanContext, buffer: TextBuffer): IdentifierToke
     return scan_whitespace(ctx);
   }
 
-  unexpected_token(peek_char(ctx) ?? 'EOF');
+  unexpected_token(peek_char(ctx) ?? 'EOF', current_position(ctx));
 }
 
 export function scan_identifier(ctx: ScanContext, buffer: TextBuffer): IdentifierToken {
@@ -126,7 +127,7 @@ export function scan_string(ctx: ScanContext, buffer: TextBuffer, end_ch: string
   const end = current_position(ctx);
   let value = buffer_consume(buffer, ctx);
   if (includes_escapes) {
-    value = transform_escape_sequences(value);
+    value = transform_escape_sequences(value, start);
   }
   return { start, end, value, type: 'string' };
 }
@@ -142,7 +143,7 @@ const special_chars: Record<string, string> = {
   '0': '\0'
 };
 
-export function transform_escape_sequences (source: string): string {
+export function transform_escape_sequences (source: string, pos: Position): string {
   const output = [];
   const characters = [...source];
   for (let i = 0; i < characters.length; i += 1) {
@@ -161,7 +162,7 @@ export function transform_escape_sequences (source: string): string {
       // requires 4 more chars, or is invalid
       const code = characters.slice(i + 1, i + 5).join('');
       if (isNaN(parseInt(code, 16))) {
-        unsupported_escape_sequence('u' + code);
+        unsupported_escape_sequence('u' + code, { column: pos.column + i, row: pos.row });
       }
       output.push(String.fromCharCode(parseInt(code, 16)));
       i += 4;
@@ -169,7 +170,7 @@ export function transform_escape_sequences (source: string): string {
       // requires 2 more chars, or is invalid
       const code = characters.slice(i + 1, i + 3).join('');
       if (isNaN(parseInt(code, 16))) {
-        unsupported_escape_sequence('x' + code);
+        unsupported_escape_sequence('x' + code, { column: pos.column + i, row: pos.row });
       }
       output.push(String.fromCharCode(parseInt(code, 16)));
       i += 2;

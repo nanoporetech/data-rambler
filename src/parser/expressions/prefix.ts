@@ -1,4 +1,4 @@
-import { consume_token, ensure_token, match_token, peek_token } from '../parser_context';
+import { consume_token, current_position, ensure_token, match_token, peek_token } from '../parser_context';
 
 import type { ParserContext } from '../parser_context.type';
 import type { JSONArray, JSONObject, JSONValue } from '../../JSON.type'; 
@@ -199,7 +199,7 @@ export function parse_json_value(ctx: ParserContext): JSONValue {
   const token = peek_token(ctx);
 
   if (!token) {
-    unexpected_end_of_input();
+    unexpected_end_of_input(current_position(ctx));
   }
 
   const { type, value } = token;
@@ -228,7 +228,7 @@ export function parse_json_value(ctx: ParserContext): JSONValue {
     return consume_token(ctx).value;
   }
 
-  unexpected_token(value);
+  unexpected_token(value, token.start);
 }
 
 export function parse_json_object(ctx: ParserContext): JSONObject {

@@ -3,7 +3,7 @@ import type { Expression } from './expression.type';
 import { parse_add_expression, parse_assignment_expression, parse_call_expression, parse_chain_expression, parse_coalescing_expression, parse_comma_expression, parse_concat_expression, parse_conditional_expression, parse_divide_expression, parse_equals_expression, parse_exponentiation_expression, parse_greater_than_expression, parse_greater_than_or_equals_expression, parse_less_than_expression, parse_less_than_or_equals_expression, parse_logical_and_expression, parse_logical_in_expression, parse_logical_or_expression, parse_multiply_expression, parse_not_equals_expression, parse_path_expression, parse_range_expression, parse_remainder_expression, parse_subtract_expression } from './expressions/infix';
 import { parse_array_literal, parse_boolean_literal, parse_field_expression, parse_function_expression, parse_group_expression, parse_negation_expression, parse_not_expression, parse_null_literal, parse_number_literal, parse_object_literal, parse_parent_expression, parse_string_literal, parse_typeof_expression, parse_wildcard_expression } from './expressions/prefix';
 import { add_infix_parselet, add_prefix_parselet, get_infix_parselet, get_prefix_parselet } from './parselets';
-import { peek_token, tokens_remaining } from './parser_context';
+import { current_position, peek_token, tokens_remaining } from './parser_context';
 
 import type { ParserContext } from './parser_context.type';
 
@@ -84,11 +84,11 @@ export function parse_expression(ctx: ParserContext, precedence = 0): Expression
 export function parse_prefix_expression(ctx: ParserContext): Expression {
   const token = peek_token(ctx);
   if (!token) {
-    unexpected_end_of_input();
+    unexpected_end_of_input(current_position(ctx));
   }
   const parselet_info = get_prefix_parselet(token);
   if (!parselet_info) {
-    unexpected_token(token.value);
+    unexpected_token(token.value, token.start);
   }
   const { precedence, parselet } = parselet_info;
 

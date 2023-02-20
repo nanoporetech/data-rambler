@@ -1,5 +1,5 @@
 import { unexpected_end_of_input } from '../scanner/error';
-import { consume_token, ensure_token, match_token, tokens_remaining } from './parser_context';
+import { consume_token, current_position, ensure_token, match_token, tokens_remaining } from './parser_context';
 
 import type { ParserContext } from './parser_context.type';
 import type { Sequence } from './sequence.type';
@@ -9,7 +9,7 @@ export function parse_sequence<T> (ctx: ParserContext, [prefix, suffix]: [string
   const { start } = ensure_token(ctx, 'symbol', prefix);
   while (match_token(ctx, 'symbol', suffix) === false) { 
     if (tokens_remaining(ctx) === false) {
-      unexpected_end_of_input();
+      unexpected_end_of_input(current_position(ctx));
     }
     const element = fn(ctx);
     if (element !== null) {

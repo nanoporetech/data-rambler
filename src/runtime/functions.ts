@@ -173,17 +173,17 @@ def('lowercase', 's', (p0: string) => p0.toLowerCase());
 def('uppercase', 's', (p0: string) => p0.toUpperCase());
 def('trim', 's', (p0: string) => p0.trim());
 def('pad', 'sns?', (p0: string, p1: number, p2?: string) => p1 > 0 ? p0.padEnd(p1, p2) : p0.padStart(p1, p2));
-def('contains', 's(sf)', () => { throw new Error('NOT IMPLEMENTED');}); // awaiting regex
-def('split', 's(sf)n?', () => { throw new Error('NOT IMPLEMENTED');}); // awaiting regex
+// def('contains', 's(sf)', () => { throw new Error('NOT IMPLEMENTED');}); // awaiting regex
+// def('split', 's(sf)n?', () => { throw new Error('NOT IMPLEMENTED');}); // awaiting regex
 def('join', 'a<s>s?', (p0: string[], p1?: string) => p0.join(p1 ?? ''));
-def('match', 'sfn?', () => { throw new Error('NOT IMPLEMENTED');}); // awaiting regex
-def('replace', 's(sf)(sf)n?', () => { throw new Error('NOT IMPLEMENTED');}); // awaiting regex
-def('eval', 's', () => { throw new Error('UNSUPPORTED');});  // just evil
-def('base64encode', 's', (p0: string) => btoa(p0)); // probably want this to go away
-def('base64decode', 's', (p0: string) => atob(p0)); // probably want this to go away
-def('format', 'sa', (p0: string, p1: unknown[]) => {
-  return p0.replace(/\$\{([0-9]*)\}/g, (_, v, i) => cast_string(p1[+v ?? i]) ?? '');
-});
+// def('match', 'sfn?', () => { throw new Error('NOT IMPLEMENTED');}); // awaiting regex
+// def('replace', 's(sf)(sf)n?', () => { throw new Error('NOT IMPLEMENTED');}); // awaiting regex
+// def('eval', 's', () => { throw new Error('UNSUPPORTED');});  // just evil
+// def('base64encode', 's', (p0: string) => btoa(p0)); // probably want this to go away
+// def('base64decode', 's', (p0: string) => atob(p0)); // probably want this to go away
+def('format', 'sa', (p0: string, p1: unknown[]) => 
+  p0.replace(/\$\{([0-9]*)\}/g, (_, v, i) => cast_string(p1[+v ?? i]) ?? '')
+);
 def('decodeUrl', 's', (p0: string) => p0 === un ? un : decodeURI(p0));
 def('decodeUrlComponent', 's', (p0: string) => p0 === un ? un : decodeURIComponent(p0));
 def('encodeUrl', 's', (p0: string) => p0 === un ? un : encodeURI(p0));
@@ -202,10 +202,8 @@ def('round', 'nn?', (p0: number, p1 = 0) => {
 def('power', 'nn', (p0: number, p1: number) => Math.pow(p0, p1));
 def('sqrt', 'n', (p0: number) => Math.sqrt(p0));
 def('random', ':n', () => Math.random());
-def('formatNumber', 'nso?', () => { throw new Error('UNSUPPORTED');}); // weird xpath nonsense
+def('formatNumber', 'ns?o?', (p0: number, p1?: string, p2?: Intl.NumberFormatOptions) => p0.toLocaleString(p1, p2));
 def('formatBase', 'nn?', (p0: number, p1?: number) => p0.toString(p1));
-def('formatInteger', 'ns', () => { throw new Error('UNSUPPORTED');}); // weird xpath nonsense
-def('parseInteger', 'ss', () => { throw new Error('UNSUPPORTED');}); // weird xpath nonsense
 def('formatUnit', 'nso?', format_units);
 
 // Aggregation Functions
@@ -222,10 +220,10 @@ def('exists', 'x', (p0: unknown) => p0 !== un);
 // Array Functions
 def('count', 'a', (p0: unknown[]) => (Array.isArray(p0) ? p0: [p0]).length);
 def('append', 'aa', (p0: unknown[], p1: unknown[]) => p0.concat(p1));
-def('sort', 'af?', () => { throw new Error('NOT IMPLEMENTED');}); // signature is incompatible with arr.sort and requires hand rolled sort
+// def('sort', 'af?', () => { throw new Error('NOT IMPLEMENTED');}); // signature is incompatible with arr.sort and requires hand rolled sort
 def('reverse', 'a', (p0: unknown[]) => p0.reverse());
 def('indexOf', 'ax', (p0: unknown[], p1: unknown) => p0.indexOf(p1));
-def('shuffle', 'a', () => { throw new Error('NOT IMPLEMENTED');}); // TODO
+// def('shuffle', 'a', () => { throw new Error('NOT IMPLEMENTED');}); // TODO
 def('distinct', 'a', (p0: unknown[]) => Array.from(new Set(p0)));
 def('zip', 'a+', (...p: Array<SimpleArray | undefined>[]) => {  
   if (p.length === 0) {
@@ -315,4 +313,4 @@ def('filter', 'af?', (p0: unknown[], p1?: (v: unknown, i: number, a: unknown[]) 
   return p0.filter(p1);
 });
 def('single', 'af?', (p0: unknown[], p1?: (v: unknown, i: number, a: unknown[]) => unknown) => p1 ? p0?.find(p1) : p0[0]);
-def('reduce', 'af?', () => { throw new Error('NOT IMPLEMENTED'); }); // TODO
+// def('reduce', 'af?', () => { throw new Error('NOT IMPLEMENTED'); }); // TODO

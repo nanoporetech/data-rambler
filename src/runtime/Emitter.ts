@@ -24,6 +24,10 @@ export class Emitter implements Input, Output {
     }
   }
 
+  get_value (): SimpleValue {
+    return this.value;
+  }
+
   static Resolve<T> (source: Output<T | Promise<T>>): Output<T | undefined> {
     const watch = (on_next: Listener<T | undefined>, on_error?: Listener<Error>) => {
       let iteration = 0;

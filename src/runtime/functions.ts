@@ -202,7 +202,7 @@ def('round', 'nn?', (p0: number, p1 = 0) => {
 def('power', 'nn', (p0: number, p1: number) => Math.pow(p0, p1));
 def('sqrt', 'n', (p0: number) => Math.sqrt(p0));
 def('random', ':n', () => Math.random());
-def('formatNumber', 'ns?o?', (p0: number, p1?: string, p2?: Intl.NumberFormatOptions) => p0.toLocaleString(p1, p2));
+def('formatNumber', 'no?', (p0: number, p1?: Intl.NumberFormatOptions) => p0.toLocaleString(undefined, p1));
 def('formatBase', 'nn?', (p0: number, p1?: number) => p0.toString(p1));
 def('formatUnit', 'nso?', format_units);
 

@@ -220,6 +220,14 @@ def('exists', 'x', (p0: unknown) => p0 !== un);
 // Array Functions
 def('count', 'a', (p0: unknown[]) => (Array.isArray(p0) ? p0: [p0]).length);
 def('append', 'aa', (p0: unknown[], p1: unknown[]) => p0.concat(p1));
+
+def('compare', '(sn)(sn)', (a: number | string, b: number | string) => {
+  if (typeof a === typeof b) {
+    return a === b ? 0 : a > b ? 1 : -1;
+  }
+  return 0;
+});
+def('sort', 'af?', (p0: unknown[], p1?: (a: unknown, b: unknown) => number) => p0.sort(p1));
 // def('sort', 'af?', () => { throw new Error('NOT IMPLEMENTED');}); // signature is incompatible with arr.sort and requires hand rolled sort
 def('reverse', 'a', (p0: unknown[]) => p0.reverse());
 def('indexOf', 'ax', (p0: unknown[], p1: unknown) => p0.indexOf(p1));

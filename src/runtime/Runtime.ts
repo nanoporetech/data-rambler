@@ -101,7 +101,7 @@ export class Runtime {
     return this.inputs[symbol] ?? null;
   }
   bind_stream (stream: Output, target: Emitter) {
-    const sub = stream.watch(value => target.emit(value));
+    const sub = stream.watch(value => target.emit(value), err => target.emit_error(err));
     this.subscriptions.push(sub);
   }
 }

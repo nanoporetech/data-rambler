@@ -3,14 +3,25 @@ import type { Input, Listener, Output, VoidFunction } from './Emitter.type';
 
 export class Emitter implements Input, Output {
   private subscribers: Set<Listener> = new Set();
+  private error_subscribers: Set<Listener<Error>> = new Set();
   private value: SimpleValue = undefined;
 
   constructor (readonly generation: number) {}
 
-  watch (fn: Listener): () => void {
+  watch (fn: Listener, on_error?: Listener<Error>): () => void {
     this.subscribers.add(fn);
     fn(this.value);
-    return () => this.subscribers.delete(fn);
+
+    if (on_error) {
+      this.error_subscribers.add(on_error);
+    }
+
+    return () => {
+      this.subscribers.delete(fn);
+      if (on_error) {
+        this.error_subscribers.delete(on_error);
+      }
+    };
   }
 
   emit (value: SimpleValue): void {
@@ -21,6 +32,12 @@ export class Emitter implements Input, Output {
     this.value = value;
     for (const fn of this.subscribers) {
       fn(value);
+    }
+  }
+
+  emit_error (err: Error): void {
+    for (const fn of this.error_subscribers) {
+      fn(err);
     }
   }
 
@@ -47,7 +64,10 @@ export class Emitter implements Input, Output {
         on_next(result);
       };
 
-      return source.watch(value => void handoff(value));
+      return source.watch(
+        value => void handoff(value),
+        err => void handoff(Promise.reject(err)),
+      );
     };
 
     return {
@@ -57,6 +77,7 @@ export class Emitter implements Input, Output {
 
   static Combine (sources: Record<string, Output>): Output<SimpleObject> {
     const listeners = new Set<Listener<SimpleObject>>();
+    const error_listeners = new Set<Listener<Error>>();
     const combined_value: Record<string, SimpleValue> = {};
     let disposer: VoidFunction | null = null;
   
@@ -74,21 +95,31 @@ export class Emitter implements Input, Output {
       }
     };
 
+    const signal_error = (err: Error) => {
+      for (const fn of error_listeners) {
+        try {
+          fn(err);
+        } catch {
+          // NOTE discard errors, we can't do much with them
+        }
+      }
+    };
+
     const subscribe = () => {
       const disposers = Object.entries(sources).map(([name, src]) => 
         Emitter.Resolve(src).watch(
           value => {
             update_value(name, value);
-          }, () => {
-            // NOTE discard errors, we can't do much with them
+          }, (err) => {
             update_value(name, undefined);
+            signal_error(err);
           }
         ));
   
       return () => disposers.forEach(fn => fn());
     };
   
-    const watch = (listener: Listener<SimpleObject>): VoidFunction => {
+    const watch = (listener: Listener<SimpleObject>, on_error?: Listener<Error>): VoidFunction => {
       if (!disposer) { 
         disposer = subscribe();
       }
@@ -98,8 +129,16 @@ export class Emitter implements Input, Output {
         // NOTE discard errors, we can't do much with them
       }
       listeners.add(listener);
+      if (on_error) {
+        // NOTE passes individual errors during composition instead if
+        // collected errors
+        error_listeners.add(on_error);
+      }
       return () => {
         listeners.delete(listener);
+        if (on_error) {
+          error_listeners.delete(on_error);
+        }
         if (disposer && listeners.size === 0) {
           disposer();
           disposer = null;

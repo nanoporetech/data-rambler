@@ -80,12 +80,23 @@ export class Emitter implements Input, Output {
     const error_listeners = new Set<Listener<Error>>();
     const combined_value: Record<string, SimpleValue> = {};
     let disposer: VoidFunction | null = null;
+    let queued = false;
   
     const update_value = (name: string, value: SimpleValue) => {
       if (combined_value[name] === value) {
         return;
       }
+      // maybe this is bad? unsure if keeping identify causes issues
       combined_value[name] = value;
+      if (queued) {
+        return;
+      }
+      queued = true;
+      queueMicrotask(notify_observers);
+    };
+
+    const notify_observers = () => {
+      queued = false;
       for (const fn of listeners) {
         try {
           fn(combined_value);

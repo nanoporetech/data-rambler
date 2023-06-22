@@ -6,6 +6,7 @@ import { functions } from './functions';
 import { parse_function_type } from './Type';
 import type { TypedFunction } from './functions.type';
 import type { Output, VoidFunction } from './Emitter.type';
+import type { Dictionary } from 'ts-runtime-typecheck';
 
 export class Runtime {
   private scope: Environment[] = [];
@@ -13,6 +14,8 @@ export class Runtime {
   private outputs: Environment = {};
   private subscriptions: VoidFunction[] = [];
   generation = 0;
+
+  debug_state: Dictionary<string> = {};
 
   readonly globals: Record<string, SimpleValue> = {
     ...(functions as Record<string, SimpleFunction>)
@@ -54,7 +57,7 @@ export class Runtime {
       }
       throw new Error(`SyntaxError: Identifier '${symbol}' has already been declared`);
     }
-    this.inputs[symbol] = new Emitter(this.generation);
+    this.inputs[symbol] = new Emitter(symbol, this.generation);
   }
   declare_output (symbol: string, update = false): void {
     const existing = this.outputs[symbol];
@@ -65,7 +68,7 @@ export class Runtime {
       }
       throw new Error(`SyntaxError: Identifier '${symbol}' has already been declared`);
     }
-    this.outputs[symbol] = new Emitter(this.generation);
+    this.outputs[symbol] = new Emitter(symbol, this.generation);
   }
   declare_source (symbol: string): void {
     const { top } = this;
@@ -76,7 +79,7 @@ export class Runtime {
       throw new Error(`SyntaxError: Identifier '${symbol}' has already been declared`);
     }
     // NOTE scopes are always unique per evaluation, so it's not possible to locate a source stream
-    top[symbol] = new Emitter(0);
+    top[symbol] = new Emitter(symbol, 0);
   }
   declare_function (symbol: string, type: string, fn: SimpleFunction): void {
     (fn as TypedFunction).SIGNATURE = parse_function_type(type);
@@ -101,7 +104,10 @@ export class Runtime {
     return this.inputs[symbol] ?? null;
   }
   bind_stream (stream: Output, target: Emitter) {
-    const sub = stream.watch(value => target.emit(value), err => target.emit_error(err));
+    const sub = stream.watch(value => {
+      this.debug_state[target.symbol] = JSON.stringify(value, null, 2);
+      target.emit(value);
+    }, err => target.emit_error(err));
     this.subscriptions.push(sub);
   }
 }

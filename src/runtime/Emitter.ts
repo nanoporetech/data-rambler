@@ -6,7 +6,11 @@ export class Emitter implements Input, Output {
   private error_subscribers: Set<Listener<Error>> = new Set();
   private value: SimpleValue = undefined;
 
-  constructor (readonly generation: number) {}
+  constructor (readonly name: string, readonly generation: number) {}
+
+  get symbol () {
+    return `${this.name} ${this.generation}`;
+  }
 
   watch (fn: Listener, on_error?: Listener<Error>): () => void {
     this.subscribers.add(fn);

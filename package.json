@@ -1,5 +1,5 @@
 {
-  "version": "0.2.8",
+  "version": "0.2.9",
   "name": "@metrichor/data-rambler",
   "main": "cjs/index.js",
   "module": "mjs/index.mjs",

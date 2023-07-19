@@ -1,17 +1,15 @@
+import { syntax_error } from '../../scanner/error';
 import { parse_expression } from '../expression';
-import type { AssignmentExpression, BinaryExpression, CallExpression, ConditionalExpression, ContextSegment, Expression, FilterSegment, IndexSegment, PathExpression, PathSegment, ReduceSegment, SortSegment } from '../expression.type';
-import { consume_token, ensure_token, match_token, peek_token, previous_token, tokens_remaining } from '../parser_context';
+import type { AssignmentExpression, BinaryExpression, CallExpression, ComputedPropertyExpression, ConditionalExpression, Expression, FunctionExpression, PropertyExpression, WildExpression } from '../expression.type';
+import { consume_token, ensure_token, join_fragments, match_token } from '../parser_context';
 import type { ParserContext } from '../parser_context.type';
-import { parse_sequence } from '../sequence';
-import { parse_expression_sequence, parse_object_literal } from './prefix';
+import { parse_expression_sequence } from './prefix';
 
 export function parse_binary_expression<T extends `${string}_expression`> (type: T, ctx: ParserContext, left: Expression, precedence: number): BinaryExpression<T> {
-  const { start } = left;
   const right = parse_expression(ctx, precedence);
-  const { end } = right;
 
   return {
-    type, left, right, start, end
+    type, left, right, fragment: join_fragments(left.fragment, right.fragment)
   };
 }
 
@@ -19,193 +17,58 @@ export function parse_assignment_expression (ctx: ParserContext, left: Expressio
   ensure_token(ctx, 'symbol', ':');
   ensure_token(ctx, 'symbol', '=');
 
+  // TODO can we support destructuring here?
   if (left.type !== 'identifier_expression') {
-    throw new SyntaxError('Invalid left-hand side in assignment'); // TODO add position data
+    syntax_error('Invalid left-hand side in assignment', left.fragment);
   }
 
-  const { start }  = left;
   const expression = parse_expression(ctx, precedence - 1);
-  const { end } = expression;
 
   return {
     type: 'assignment_expression',
     symbol: left.value,
     expression,
-    start,
-    end
+    fragment: join_fragments(left.fragment, expression.fragment),
   };
 }
 
-export function parse_path_expression(ctx: ParserContext, left: Expression, precedence: number): PathExpression {
-  const { start } = left;
-  const segments: PathSegment[] = [];
-  let head: Expression | null = attempt_unwrap_quoted_field(left);
-
-  if (head.type === 'field_expression' || head.type === 'wildcard_expression' || head.type === 'descendant_expression') {
-    segments.push(head);
-    head = null;
-  }
-
-  segments.push(...parse_path_segments(ctx, precedence));
-
-  const { end } = previous_token(ctx);
-
-  return {
-    type: 'path_expression',
-    head,
-    segments,
-    start,
-    end
-  }; 
-}
-
-export function parse_path_segments (ctx: ParserContext, precedence: number): PathSegment[] {
-  const segments: PathSegment[] = [];
-  while (tokens_remaining(ctx)) {
-    const segment = parse_path_segment(ctx, precedence);
-    if (!segment) {
-      break;
-    }
-    segments.push(segment);
-  }
-  return segments;
-}
-
-function parse_path_segment (ctx: ParserContext, precedence: number): PathSegment | null {
-  const next = peek_token(ctx);
-  if (!next || next.type !== 'symbol') {
-    return null;
-  }
-
-  switch (next.value) {
-    case '[': return parse_filter_segment(ctx);
-    case '{': return parse_reduce_segment(ctx);
-    case '^': return parse_sort_segment(ctx);
-    case '#': return parse_index_segment(ctx, precedence);
-    case '.': return parse_map_segment(ctx, precedence);
-  }
-  return null;
-}
-
-export function parse_map_segment (ctx: ParserContext, precedence: number): PathSegment {
+export function parse_property_expression (ctx: ParserContext, left: Expression): PropertyExpression {
   ensure_token(ctx, 'symbol', '.');
-  const expr =  attempt_unwrap_quoted_field(parse_expression(ctx, precedence));
 
-  const next = peek_token(ctx);
-
-  // NOTE we only support index/context binding after a map operations
-  // this is supported in the parser as "upgrading" a map segment to a index/context segment
-
-  switch (next?.type === 'symbol' && next.value) {
-    case '@': return parse_context_segment(ctx, expr, precedence);
-  }
-
-  return expr;
-}
-
-export function attempt_unwrap_quoted_field (expr: Expression): Expression {
-  if (expr.type === 'json_expression' && typeof expr.value === 'string') {
-    const { start, end, value } = expr;
-    return { type: 'field_expression', start, end, value };
-  }
-  return expr;
-}
-
-export function parse_filter_segment (ctx: ParserContext): FilterSegment {
-  const { start } = ensure_token(ctx, 'symbol', '[');
-  let expression;
-  if (!match_token(ctx, 'symbol', ']')) {
-    expression = parse_expression(ctx); // default precedence inside the brackets
-  }
-  const { end } = ensure_token(ctx, 'symbol', ']');
-
-  return {
-    type: 'filter', expression, start, end
-  };
-}
-
-export function parse_reduce_segment (ctx: ParserContext): ReduceSegment {
-  const { start, end, elements } = parse_object_literal(ctx);
+  const { fragment: end, value: symbol } = ensure_token(ctx, 'identifier');
   
   return {
-    type: 'reduce',
-    start,
-    end,
-    elements
+    type: 'property_expression',
+    left,
+    fragment: join_fragments(left.fragment, end),
+    symbol,
   };
 }
 
-export function parse_index_segment (ctx: ParserContext, precedence: number): IndexSegment {
-  const { start } = ensure_token(ctx, 'symbol', '#');
-  const { value, end } = ensure_token(ctx, 'identifier');
-  if (!value.startsWith('$')) {
-    throw new Error('The left side of := must be a variable name (start with $)');
-  }
-  const symbol = value.slice(1);
-  // NOTE to aid in path evaluation any segments after a index segment are considered
-  // a child path expression
-  const segments = parse_path_segments(ctx, precedence);
+export function parse_computed_property_expression (ctx: ParserContext, left: Expression): ComputedPropertyExpression {
+  ensure_token(ctx, 'symbol', '[');
+
+  const expr = parse_expression(ctx);
+  const { fragment: end } = ensure_token(ctx, 'symbol', ']');
 
   return {
-    type: 'index',
-    start,
-    end,
-    segments,
-    symbol
+    type: 'computed_property_expression',
+    left,
+    fragment: join_fragments(left.fragment, end),
+    field: expr,
   };
 }
 
-export function parse_context_segment (ctx: ParserContext, expression: Expression, precedence: number): ContextSegment {
-  const { start } = ensure_token(ctx, 'symbol', '@');
-  const { value, end } = ensure_token(ctx, 'identifier');
-  if (!value.startsWith('$')) {
-    throw new Error('The left side of := must be a variable name (start with $)');
-  }
-  const symbol = value.slice(1);
-  // NOTE to aid in path evaluation any segments after a context segment are considered
-  // a child path expression
-  const segments = parse_path_segments(ctx, precedence);
-
-  return {
-    type: 'context',
-    start,
-    end,
-    expression,
-    segments,
-    symbol
-  };
-}
-
-export function parse_sort_segment (ctx: ParserContext): SortSegment {
-  const { start } = ensure_token(ctx, 'symbol', '^');
-  const { end, elements } = parse_sequence(ctx, ['(', ')'], ctx => {
-    let ascending = true; // default to ascending order
-
-    if (match_token(ctx, 'symbol', '>')) { // descending
-      consume_token(ctx);
-      ascending = false;
-    }
-    else if (match_token(ctx, 'symbol', '<')) { // explicit ascending
-      consume_token(ctx); 
-    }
-
-    const expression = parse_expression(ctx); // default precedence
-
-    return {
-      ascending,
-      expression
-    };
-  });
+export function parse_wild_expression (ctx: ParserContext, left: Expression): WildExpression {
+  ensure_token(ctx, 'symbol', '.');
+  const { fragment: end } = ensure_token(ctx, 'symbol', '*');
   
   return {
-    type: 'sort',
-    start,
-    end,
-    elements
+    type: 'wild_expression',
+    left,
+    fragment: join_fragments(left.fragment, end),
   };
 }
-
-
 
 export function parse_range_expression (ctx: ParserContext, left: Expression, precedence: number): BinaryExpression<'range_expression'> {
   ensure_token(ctx, 'symbol', '.');
@@ -214,57 +77,50 @@ export function parse_range_expression (ctx: ParserContext, left: Expression, pr
   return parse_binary_expression('range_expression', ctx, left, precedence); // we might want the precedence of this to be higher
 }
 
-export function parse_conditional_expression (ctx: ParserContext, left: Expression, precedence: number): ConditionalExpression {
-  const { start } = left;
-
+export function parse_conditional_expression (ctx: ParserContext, condition: Expression, precedence: number): ConditionalExpression {
   ensure_token(ctx, 'symbol', '?');
 
   const then_expression = parse_expression(ctx, precedence);
-  let end = then_expression.end;
+  let end = then_expression.fragment;
   let else_expression = null;
 
   if (match_token(ctx, 'symbol', ':')) {
     consume_token(ctx);
     else_expression = parse_expression(ctx, precedence);
-    end = else_expression.end;
+    end = else_expression.fragment;
   }
 
   return {
     type: 'conditional_expression',
-    start, 
-    end,
-    condition: left,
+    fragment: join_fragments(condition.fragment, end),
+    condition,
     then_expression,
     else_expression,
   };
 }
 
-export function parse_call_expression (ctx: ParserContext, callee: Expression, _precedence: number): CallExpression {
-  const { start } = callee;
-  const { elements, end } = parse_expression_sequence(ctx, ['(', ')'], 1); // ensure don't parse comma expression
+export function parse_call_expression (ctx: ParserContext, callee: Expression): CallExpression {
+  const { elements, fragment: end } = parse_expression_sequence(ctx, ['(', ')'], 1); // ensure don't parse comma expression
   return {
     type: 'call_expression',
-    start,
-    end,
+    fragment: join_fragments(callee.fragment, end),
     callee: callee,
     arguments: elements,
   };
 }
 
 export function parse_chain_expression (ctx: ParserContext, left: Expression, precedence: number): BinaryExpression<'chain_expression'> {
-  const { start } = left;
-  ensure_token(ctx, 'symbol', '~');
+  ensure_token(ctx, 'symbol', '|');
   ensure_token(ctx, 'symbol', '>');
 
+  // TODO rework the chain expression to be sugar for call expressions
   const right = parse_expression(ctx, precedence);
-  const { end } = right; 
 
   // NOTE the right hand side should resolve to a function or a function call expression
 
   return {
     type: 'chain_expression',
-    start,
-    end,
+    fragment: join_fragments(left.fragment, right.fragment),
     left,
     right,
   };
@@ -280,12 +136,6 @@ export function parse_add_expression (ctx: ParserContext, left: Expression, prec
   ensure_token(ctx, 'symbol', '+');
 	
   return parse_binary_expression('add_expression', ctx, left, precedence);
-}
-
-export function parse_concat_expression (ctx: ParserContext, left: Expression, precedence: number): BinaryExpression<'concat_expression'> {
-  ensure_token(ctx, 'symbol', '&');
-	
-  return parse_binary_expression('concat_expression', ctx, left, precedence);
 }
 
 export function parse_subtract_expression (ctx: ParserContext, left: Expression, precedence: number): BinaryExpression<'subtract_expression'> {
@@ -381,4 +231,44 @@ export function parse_exponentiation_expression (ctx: ParserContext, left: Expre
   ensure_token(ctx, 'symbol', '*');
 
   return parse_binary_expression('exponentiation_expression', ctx, left, precedence);
+}
+
+export function resolve_parameters(expr: Expression): string[] {
+  const unwrap_comma = (expr: Expression): string[] => {
+    if (expr.type === 'comma_expression') {
+      return [...unwrap_comma(expr.left), ...unwrap_comma(expr.right)];
+    }
+    if (expr.type === 'identifier_expression') {
+      return [expr.value];
+    }
+    syntax_error('Malformed arrow function parameter list', expr.fragment);
+  };
+
+  if (expr.type === 'identifier_expression') {
+    return [ expr.value ];
+  }
+  
+  if (expr.type === 'group_expression') {
+    const { expression } = expr;
+    if (!expression) {
+      return [];
+    } 
+    
+    return unwrap_comma(expr);
+  }
+
+  syntax_error('Malformed arrow function parameter list', expr.fragment);
+}
+
+export function parse_function_expression(ctx: ParserContext, left: Expression): FunctionExpression {
+  const parameters = resolve_parameters(left);
+  const body = parse_expression(ctx); // WARN what precedence should this be?
+  const fragment = join_fragments(left.fragment, body.fragment);
+
+  return {
+    type: 'function_expression',
+    fragment,
+    parameters,
+    body
+  };
 }

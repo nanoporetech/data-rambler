@@ -1,4 +1,4 @@
-import { consume_token, current_position, ensure_token, match_token, peek_token } from '../parser_context';
+import { consume_token, ensure_token, join_fragments, match_token, peek_token } from '../parser_context';
 
 import type { ParserContext } from '../parser_context.type';
 import type { JSONArray, JSONObject, JSONValue } from '../../JSON.type'; 
@@ -6,200 +6,122 @@ import { parse_sequence } from '../sequence';
 import { unexpected_end_of_input, unexpected_token } from '../../scanner/error';
 import { parse_expression } from '../expression';
 import type { Sequence } from '../sequence.type';
-import type { ArrayExpression, Expression, FieldExpression, FunctionExpression, GroupExpression, IdentifierExpression, JSONExpression, ObjectExpression, SimplePrefixExpression, SymbolExpression } from '../expression.type';
+import type { ArrayExpression, Expression, GroupExpression, IdentifierExpression, JSONExpression, ObjectExpression, SimplePrefixExpression } from '../expression.type';
 
 export function parse_expression_sequence (ctx: ParserContext, delimiter: [string, string], precedence = 0): Sequence<Expression> {
   return parse_sequence(ctx, delimiter, ctx => parse_expression(ctx, precedence));
 }
 
 export function parse_number_literal(ctx: ParserContext): JSONExpression {
-  const { start, value, end } = consume_token(ctx);
-  return {
-    type: 'json_expression',
-    start,
-    end,
-    value: Number(value),
-  };
+  const { value, fragment } = consume_token(ctx);
+  return { type: 'json_expression', fragment, value: Number(value) };
 }
 
 export function parse_string_literal(ctx: ParserContext): JSONExpression {
-  const { start, value, end } = consume_token(ctx);
-  return {
-    type: 'json_expression',
-    start,
-    end,
-    value,
-  };
+  const { value, fragment } = consume_token(ctx);
+  return { type: 'json_expression', fragment, value };
 }
 
 export function parse_boolean_literal(ctx: ParserContext): JSONExpression {
-  const { start, value, end } = consume_token(ctx);
-  return {
-    type: 'json_expression',
-    start,
-    end,
-    value: value === 'true',
-  };
+  const { value, fragment } = consume_token(ctx);
+  return { type: 'json_expression', fragment, value: value === 'true' };
+}
+
+export function parse_identifier_literal(ctx: ParserContext): IdentifierExpression {
+  const { value, fragment } = consume_token(ctx);
+  return { type: 'identifier_expression', fragment, value };
 }
 
 export function parse_null_literal(ctx: ParserContext): JSONExpression {
-  const { start, end } = consume_token(ctx);
-  return {
-    type: 'json_expression',
-    start,
-    end,
-    value: null,
-  };
+  const { fragment } = consume_token(ctx);
+  return { type: 'json_expression', fragment, value: null };
+}
+
+export function parse_undefined_literal(ctx: ParserContext): JSONExpression {
+  const { fragment } = consume_token(ctx);
+  return { type: 'json_expression', fragment, value: undefined };
 }
 
 export function parse_object_literal(ctx: ParserContext): ObjectExpression {
-  const { start, end, elements } = parse_sequence(ctx, ['{', '}'], ctx => {
-    const key = parse_expression(ctx, 1); // ensure we don't parse comma expressions
+  // TODO add support for spread operator
+  const { fragment, elements } = parse_sequence(ctx, ['{', '}'], ctx => {
+    let key: Expression;
+    // computed
+    if (match_token(ctx, 'symbol', '[')) {
+      consume_token(ctx);
+      key = parse_expression(ctx, 1); // ensure we don't parse comma expressions
+      ensure_token(ctx, 'symbol', ']');
+    }
+    // static
+    else {
+      const { value, fragment } = ensure_token(ctx, 'identifier');
+      key = { type: 'json_expression', fragment, value };
+    }
     ensure_token(ctx, 'symbol', ':');
     const value = parse_expression(ctx, 1); // ensure we don't parse comma expressions
     return { key, value };
   });
 
-  return {
-    type: 'object_expression',
-    start,
-    end,
-    elements,
-  };
+  return { type: 'object_expression', fragment, elements };
 }
 
 export function parse_array_literal(ctx: ParserContext): ArrayExpression {
-  const { start, end, elements } = parse_expression_sequence(ctx, ['[', ']'], 1);
-  return {
-    type: 'array_expression',
-    start,
-    end,
-    elements,
-  };
-}
-
-export function parse_field_expression(ctx: ParserContext): FieldExpression | IdentifierExpression {
-  const { start, value, end } = consume_token(ctx);
-
-  const type = value.startsWith('$') ? 'identifier_expression' : 'field_expression';
-
-  return {
-    type,
-    start,
-    end,
-    value: type === 'identifier_expression' ? value.slice(1) : value,
-  };
-}
-
-export function parse_function_expression(ctx: ParserContext): FunctionExpression {
-  const { start } = ensure_token(ctx, 'identifier', 'fn');
-  const { elements: parameters } = parse_sequence(ctx, ['(', ')'], ctx => {
-    const { value } = ensure_token(ctx, 'identifier');
-    if (!value.startsWith('$')) {
-      throw new Error(`Parameter ${value} of function definition must be a variable name (start with $)`);
-    }
-    return value.slice(1);
-  });
-  ensure_token(ctx, 'symbol', '{');
-  const body = parse_expression(ctx); // default precedence
-  const { end } = ensure_token(ctx, 'symbol', '}');
-
-  return {
-    type: 'function_expression',
-    start, 
-    end,
-    parameters,
-    body
-  };
+  // TODO add support for spread operator
+  const { fragment, elements } = parse_expression_sequence(ctx, ['[', ']'], 1);
+  return { type: 'array_expression', fragment, elements };
 }
 
 export function parse_negation_expression(ctx: ParserContext, precedence: number): SimplePrefixExpression {
-  const { start } = ensure_token(ctx, 'symbol', '-');
+  const { fragment: start } = ensure_token(ctx, 'symbol', '-');
   const expression = parse_expression(ctx, precedence);
-  const { end } = expression;
 
   return {
     type: 'negate_expression',
-    start,
-    end,
+    fragment: join_fragments(start, expression.fragment),
+    expression,
+  };
+}
+
+export function parse_plus_expression(ctx: ParserContext, precedence: number): SimplePrefixExpression {
+  const { fragment: start } = ensure_token(ctx, 'symbol', '+');
+  const expression = parse_expression(ctx, precedence);
+
+  return {
+    type: 'plus_expression',
+    fragment: join_fragments(start, expression.fragment),
     expression,
   };
 }
 
 export function parse_not_expression(ctx: ParserContext, precedence: number): SimplePrefixExpression {
-  const { start } = ensure_token(ctx, 'identifier', 'not');
+  const { fragment: start } = ensure_token(ctx, 'identifier', 'not');
   const expression = parse_expression(ctx, precedence);
-  const { end } = expression;
-
-  return {
-    type: 'not_expression',
-    start,
-    end,
-    expression,
-  };
-}
-
-export function parse_wildcard_expression(ctx: ParserContext): SymbolExpression | SymbolExpression {
-  const { start, end } = ensure_token(ctx, 'symbol', '*');
-
-  if (match_token(ctx, 'symbol', '*')) {
-    const { end } = consume_token(ctx);
-    return {
-      type: 'descendant_expression',
-      start,
-      end,
-    }; 
-  }
-  return {
-    type: 'wildcard_expression',
-    start,
-    end,
-  };
-}
-
-export function parse_parent_expression(ctx: ParserContext): SymbolExpression {
-  const { start, end } = ensure_token(ctx, 'symbol', '%');
-
-  return {
-    type: 'parent_expression',
-    start,
-    end,
-  };
+  const fragment = join_fragments(start, expression.fragment);
+  return { type: 'not_expression', fragment, expression };
 }
 
 export function parse_typeof_expression(ctx: ParserContext, precedence: number): SimplePrefixExpression {
-  const { start } = ensure_token(ctx, 'identifier', 'typeof');
+  const { fragment: start } = ensure_token(ctx, 'identifier', 'typeof');
   const expression = parse_expression(ctx, precedence);
-  const { end } = expression;
-
-  return {
-    type: 'typeof_expression',
-    start,
-    end,
-    expression,
-  };
+  const fragment = join_fragments(start, expression.fragment);
+  return { type: 'typeof_expression', fragment, expression };
 }
 
 export function parse_group_expression(ctx: ParserContext): GroupExpression {
-  const { start } = ensure_token(ctx, 'symbol', '(');
+  const { fragment: start } = ensure_token(ctx, 'symbol', '(');
   let expression;
   if (!match_token(ctx, 'symbol', ')')) {
     expression = parse_expression(ctx); // default precedence
   }
-  const { end } = ensure_token(ctx, 'symbol', ')');
-  return {
-    type: 'group_expression',
-    start,
-    end,
-    expression,
-  };
+  const { fragment: end } = ensure_token(ctx, 'symbol', ')');
+  return { type: 'group_expression', fragment: join_fragments(start, end), expression };
 }
 
 export function parse_json_value(ctx: ParserContext): JSONValue {
   const token = peek_token(ctx);
 
   if (!token) {
-    unexpected_end_of_input(current_position(ctx));
+    unexpected_end_of_input(ctx.fragment.end, ctx.fragment.source);
   }
 
   const { type, value } = token;
@@ -228,7 +150,7 @@ export function parse_json_value(ctx: ParserContext): JSONValue {
     return consume_token(ctx).value;
   }
 
-  unexpected_token(value, token.start);
+  unexpected_token(value, token.fragment);
 }
 
 export function parse_json_object(ctx: ParserContext): JSONObject {

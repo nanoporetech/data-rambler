@@ -1,7 +1,6 @@
-import type { Position } from '../scanner/Position.type';
+import type { Fragment } from '../scanner/Position.type';
 
 export interface Sequence<T> {
-  start: Position;
-  end: Position;
+  fragment: Fragment;
   elements: T[];
 }

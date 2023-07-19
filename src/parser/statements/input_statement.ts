@@ -1,11 +1,11 @@
 import type { Attribute, InputStatement } from '../expression.type';
 import { parse_json_value } from '../expressions/prefix';
-import { consume_token, ensure_token, match_token } from '../parser_context';
+import { consume_token, ensure_token, join_fragments, match_token } from '../parser_context';
 import type { ParserContext } from '../parser_context.type';
 import { end_statement } from '../statement';
 
 export function parse_input_statement (ctx: ParserContext, attributes: Attribute[]): InputStatement {
-  const { start } = ensure_token(ctx, 'identifier', 'in');
+  const { fragment: start } = ensure_token(ctx, 'identifier', 'in');
   const name = ensure_token(ctx, 'identifier').value;
 
   let default_value = undefined;
@@ -16,12 +16,12 @@ export function parse_input_statement (ctx: ParserContext, attributes: Attribute
   }
 
   const end = end_statement(ctx);
+  const fragment = join_fragments(start, end);
 
   return {
     type: 'input_statement',
     name,
-    start,
-    end,
+    fragment,
     default_value,
     attributes,
   };

@@ -1,10 +1,9 @@
 import type { JSONValue } from '../JSON.type';
-import type { Position } from '../scanner/Position.type';
+import type { Fragment } from '../scanner/Position.type';
 
 export interface ExpressionBase<T extends `${string}_expression`> {
   type: T;
-  start: Position;
-  end: Position;
+  fragment: Fragment;
 }
 
 export interface BinaryExpression<T extends `${string}_expression`> extends ExpressionBase<T> {
@@ -15,6 +14,20 @@ export interface BinaryExpression<T extends `${string}_expression`> extends Expr
 export interface AssignmentExpression extends ExpressionBase<'assignment_expression'> {
   symbol: string;
   expression: Expression;
+}
+
+export interface PropertyExpression extends ExpressionBase<'property_expression'> {
+  left: Expression;
+  symbol: string;
+}
+
+export interface ComputedPropertyExpression extends ExpressionBase<'computed_property_expression'> {
+  left: Expression;
+  field: Expression;
+}
+
+export interface WildExpression extends ExpressionBase<'wild_expression'> {
+  left: Expression;
 }
 
 export interface CallExpression extends ExpressionBase<'call_expression'> {
@@ -49,61 +62,17 @@ export type ArithmeticExpression = BinaryExpression<
 | 'remainder_expression'
 >;
 
-export interface PathExpression extends ExpressionBase<'path_expression'> {
-  head: Expression | null;
-  segments: PathSegment[];
-}
-
-export type PathSegment = ReduceSegment | FilterSegment | SortSegment | IndexSegment | ContextSegment | Expression;
-
-export interface ReduceSegment {
-  type: 'reduce';
-  start: Position;
-  end: Position;
-  elements: { key: Expression; value: Expression }[];
-}
-
-export interface FilterSegment {
-  type: 'filter';
-  start: Position;
-  end: Position;
-  expression: Expression | undefined;
-}
-
-export interface SortSegment {
-  type: 'sort';
-  start: Position;
-  end: Position;
-  elements: { ascending: boolean; expression: Expression }[];
-}
-
-export interface IndexSegment {
-  type: 'index';
-  start: Position;
-  end: Position;
-  symbol: string;
-  segments: PathSegment[];
-}
-
-export interface ContextSegment {
-  type: 'context';
-  start: Position;
-  end: Position;
-  symbol: string;
-  expression: Expression;
-  segments: PathSegment[];
-}
-
 export type InfixExpression = 
   | BinaryExpression<'logical_in_expression'>
   | BinaryExpression<'logical_and_expression'>
   | BinaryExpression<'logical_or_expression'>
   | BinaryExpression<'comma_expression'>
-  | BinaryExpression<'concat_expression'>
   | BinaryExpression<'range_expression'>
   | BinaryExpression<'coalescing_expression'>
   | BinaryExpression<'chain_expression'> 
-  | PathExpression
+  | PropertyExpression
+  | ComputedPropertyExpression
+  | WildExpression
   | EqualityExpression
   | ComparisonExpression
   | ArithmeticExpression
@@ -111,18 +80,16 @@ export type InfixExpression =
   | CallExpression
   | ConditionalExpression;
 
-export interface SimplePrefixExpression extends ExpressionBase<'negate_expression' | 'not_expression' | 'typeof_expression'> {
+export interface SimplePrefixExpression extends ExpressionBase<'negate_expression' | 'not_expression' | 'plus_expression' | 'typeof_expression'> {
   expression: Expression;
 }
-
-export type SymbolExpression = ExpressionBase<'wildcard_expression' | 'descendant_expression' | 'parent_expression'>
 
 export interface GroupExpression extends ExpressionBase<'group_expression'> {
   expression: Expression | undefined;
 }
 
 export interface JSONExpression extends ExpressionBase<'json_expression'> {
-  value: JSONValue;
+  value: JSONValue | undefined;
 }
 
 export interface ObjectExpression extends ExpressionBase<'object_expression'> {
@@ -134,10 +101,6 @@ export interface ArrayExpression extends ExpressionBase<'array_expression'> {
 }
 
 export interface IdentifierExpression extends ExpressionBase<'identifier_expression'> {
-  value: string;
-}
-
-export interface FieldExpression extends ExpressionBase<'field_expression'> {
   value: string;
 }
 
@@ -153,60 +116,55 @@ export type PrefixExpression =
   | IdentifierExpression
   | FunctionExpression
   | SimplePrefixExpression
-  | GroupExpression
-  | FieldExpression
-  | SymbolExpression;
+  | GroupExpression;
 
 export type Expression = InfixExpression | PrefixExpression;
 
+export interface StatementBase<T extends `${string}_statement`> {
+  type: T;
+  fragment: Fragment;
+}
 
-export interface InputStatement {
-  type: 'input_statement';
+export interface InputStatement extends StatementBase<'input_statement'> {
   name: string;
-  start: Position;
-  end: Position;
   default_value: JSONValue | undefined;
   attributes: Attribute[];
 }
 
-export interface BlockStatement {
-  type: 'block_statement';
+export interface BlockStatement extends StatementBase<'block_statement'> {
   statements: Statement[];
-  start: Position;
-  end: Position;
   attributes: Attribute[];
 }
 
-export interface LetStatement {
-  type: 'let_statement';
+export interface LetStatement extends StatementBase<'let_statement'> {
   name: string;
   expression: Expression;
-  start: Position;
-  end: Position;
   attributes: Attribute[];
 }
 
-export interface OutputStatement {
-  type: 'output_statement';
+export interface FunctionStatement extends StatementBase<'function_statement'> {
+  name: string;
+  parameters: string[];
+  expression: Expression;
+  attributes: Attribute[];
+}
+
+export interface OutputStatement extends StatementBase<'output_statement'> {
   name: string;
   expression: Expression;
-  start: Position;
-  end: Position;
   attributes: Attribute[];
 }
 
-export type Statement = InputStatement | BlockStatement | LetStatement | OutputStatement;
+export type Statement = InputStatement | BlockStatement | LetStatement | OutputStatement | FunctionStatement;
 
 export interface Attribute {
   type: 'attribute';
   name: string;
   parameters: JSONValue[];
-  start: Position;
-  end: Position;
+  fragment: Fragment;
 }
 export interface Module {
   type: 'module';
-  start: Position;
-  end: Position;
+  fragment: Fragment;
   statements: Statement[];
 }

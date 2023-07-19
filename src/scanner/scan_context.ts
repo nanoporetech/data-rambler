@@ -10,7 +10,7 @@ export function peek_char(ctx: ScanContext, offset = 0): string | undefined {
 export function consume_char(ctx: ScanContext): string {
   const ch = ctx.source[ctx.index];
   if (ch === undefined || characters_remaining(ctx) === false) {
-    unexpected_end_of_input(current_position(ctx));
+    unexpected_end_of_input(ctx.index, ctx.source);
   }
   ctx.index += 1;
   if (ch === '\n') {

@@ -37,6 +37,7 @@ export function parse_function_type(str: string): FunctionType {
       rest = next;
 
       if (!can_assign_to(next, ARRAY)) {
+        
         throw new Error('A rest parameter must be of an array type.');
       }
 

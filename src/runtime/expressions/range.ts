@@ -1,11 +1,12 @@
 import type { BinaryExpression } from '../../parser/expression.type';
 import { Range } from '../../Range';
-import type { SimpleValue } from '../../SimpleValue.type';
+import { type_error } from '../../scanner/error';
 import { enforce_number, eval_any_expr, ExpressionEnvironment } from '../expression';
+import { extended_typeof } from '../functions';
 
-export function eval_range_expr(ctx: ExpressionEnvironment, expr: BinaryExpression<'range_expression'>, value: SimpleValue): Range {
-  const left = eval_any_expr(ctx, expr.left, value);
-  const right = eval_any_expr(ctx, expr.right, value);
+export function eval_range_expr(ctx: ExpressionEnvironment, expr: BinaryExpression<'range_expression'>): Range {
+  const left = eval_any_expr(ctx, expr.left);
+  const right = eval_any_expr(ctx, expr.right);
   
   if (left !== undefined) {
     enforce_number(expr.left, left);
@@ -19,11 +20,11 @@ export function eval_range_expr(ctx: ExpressionEnvironment, expr: BinaryExpressi
   }
   
   if (!Number.isInteger(left)) {
-    throw new Error(`Expected ${expr.left.type} @ (${expr.left.start.row}, ${expr.left.start.column}) to resolve to a integer but recieved ${left}`);
+    type_error(`Expected integer but received ${extended_typeof(left)}`, expr.left.fragment);
   }
   
   if (!Number.isInteger(right)) {
-    throw new Error(`Expected ${expr.right.type} @ (${expr.right.start.row}, ${expr.right.start.column}) to resolve to a integer but recieved ${right}`);
+    type_error(`Expected integer but received ${extended_typeof(right)}`, expr.right.fragment);
   }
   
   return new Range(left, right);

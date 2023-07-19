@@ -1,9 +1,10 @@
 import { Emitter } from './Emitter';
 
-import type { Statement, BlockStatement, Module, Expression, PathSegment } from '../parser/expression.type';
+import type { Statement, BlockStatement, Module, Expression } from '../parser/expression.type';
 import type { Listener, Output } from './Emitter.type';
 import type { Runtime } from './Runtime';
 import { eval_root_expr } from './expression';
+import { compiler_error } from '../scanner/error';
 
 export function evaluate_declaration(runtime: Runtime, stmt: Statement, update: boolean): void {
   if (stmt.type === 'block_statement') {
@@ -31,7 +32,7 @@ export function evaluate_statement(runtime: Runtime, stmt: Statement, update: bo
 
   const target = runtime.resolve_source(stmt.name);
   if (!target) {
-    throw new Error(`ReferenceError: "${stmt.name}" is not defined`);
+    compiler_error(`${stmt.name} is not defined`, stmt.fragment);
   }
 
   if (stmt.type === 'input_statement') {

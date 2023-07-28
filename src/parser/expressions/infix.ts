@@ -234,29 +234,22 @@ export function parse_exponentiation_expression (ctx: ParserContext, left: Expre
 }
 
 export function resolve_parameters(expr: Expression): string[] {
-  const unwrap_comma = (expr: Expression): string[] => {
-    if (expr.type === 'comma_expression') {
-      return [...unwrap_comma(expr.left), ...unwrap_comma(expr.right)];
-    }
-    if (expr.type === 'identifier_expression') {
-      return [expr.value];
-    }
-    syntax_error('Malformed arrow function parameter list', expr.fragment);
-  };
-
   if (expr.type === 'identifier_expression') {
     return [ expr.value ];
   }
-  
   if (expr.type === 'group_expression') {
-    const { expression } = expr;
-    if (!expression) {
-      return [];
-    } 
-    
-    return unwrap_comma(expr);
+    return expr.expression ? unwrap_comma(expr.expression) : [];
   }
+  syntax_error('Malformed arrow function parameter list', expr.fragment);
+}
 
+export function unwrap_comma (expr: Expression): string[] {
+  if (expr.type === 'comma_expression') {
+    return [...unwrap_comma(expr.left), ...unwrap_comma(expr.right)];
+  }
+  if (expr.type === 'identifier_expression') {
+    return [expr.value];
+  }
   syntax_error('Malformed arrow function parameter list', expr.fragment);
 }
 

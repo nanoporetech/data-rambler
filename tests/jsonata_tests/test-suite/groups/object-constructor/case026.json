@@ -1,6 +1,0 @@
-{
-    "expr": "$${id:{'label':label,'value':value}}",
-    "data": [],
-    "bindings": {},
-    "result": {}
-}

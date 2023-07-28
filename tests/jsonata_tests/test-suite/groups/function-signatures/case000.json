@@ -1,6 +1,0 @@
-{
-    "expr": "fn($arg)<b:b>{$not($arg)}(true)",
-    "dataset": null,
-    "bindings": {},
-    "result": false
-}

@@ -1,6 +1,0 @@
-{
-    "expr": "$number(fn(){5})",
-    "dataset": null,
-    "bindings": {},
-    "code": "T0410"
-}

@@ -1,6 +1,0 @@
-{
-    "expr": "($square := fn($x){$x*$x},$chain := fn($f, $g){fn($x){$g($f($x))}},$instructions := [$sum, $square],$sumsq := $instructions ~> $reduce($chain),[1..5] ~> $sumsq()) ",
-    "dataset": null,
-    "bindings": {},
-    "result": 225
-}

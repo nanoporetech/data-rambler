@@ -1,6 +1,0 @@
-{
-    "expr": "( $square := fn($x){$x*$x}, [1..5] ~> $map($square) ~> $sum() ) ",
-    "dataset": null,
-    "bindings": {},
-    "result": 55
-}

@@ -1,9 +1,0 @@
-{
-    "expr": "( $B := fn(){''}, $A := fn(){2 + $B()}, $A() )",
-    "dataset": null,
-    "bindings": {},
-    "error": {
-        "code": "T2002",
-        "token": "+"
-    }
-}

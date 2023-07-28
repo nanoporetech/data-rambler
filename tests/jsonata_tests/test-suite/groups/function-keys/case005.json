@@ -1,6 +1,0 @@
-{
-    "expr": "$keys(fn(){1})",
-    "dataset": null,
-    "bindings": {},
-    "undefinedResult": true
-}

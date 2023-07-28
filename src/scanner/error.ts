@@ -2,15 +2,15 @@ import type { Fragment } from './Position.type';
 
 export function unexpected_end_of_input(index: number, source: string[]): never {
   const fragment = { start: index, end: index, source };
-  syntax_error('Unexpected end of input', fragment);
+  syntax_error('Unexpected end of input.', fragment);
 }
 
 export function unexpected_token(token: string, fragment: Fragment): never {
-  syntax_error(`Invalid or unexpected token "${token}"`, fragment);
+  syntax_error(`Invalid or unexpected token "${token}".`, fragment);
 }
 
 export function unsupported_escape_sequence(token: string, fragment: Fragment): never {
-  syntax_error(`Unsupported escape sequence "\\${token}"`, fragment);
+  syntax_error(`Unsupported escape sequence "\\${token}".`, fragment);
 }
 
 export function syntax_error(msg: string, fragment: Fragment): never {
@@ -37,7 +37,7 @@ export function named_error(name: string, msg: string, fragment?: Fragment): nev
 }
 
 export function unknown_attribute(name: string, fragment: Fragment): never {
-  syntax_error(`Unknown attribute ${name}`, fragment);
+  syntax_error(`Unknown attribute ${name}.`, fragment);
 }
 
 const NEWLINE = '\n';

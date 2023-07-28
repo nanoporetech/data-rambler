@@ -1,3 +1,4 @@
+import { scan } from '../scanner/scanner';
 import { split_symbol_token_pattern, add_prefix_parselet, add_infix_parselet, get_infix_parselet } from './parselets';
 import { consume_token, create_parser_context } from './parser_context';
 
@@ -28,22 +29,7 @@ describe('parselets', () => {
     }
     // create an input that matches PART of the dummy parselet
     // but doesn't have any partial matches
-    const pos = { column: 1, row: 1 };
-    const ctx = create_parser_context([
-      {
-        type: 'symbol',
-        value: '$',
-        start: pos,
-        end: pos,
-      },
-      {
-        type: 'symbol',
-        value: '+',
-        start: pos,
-        end: pos,
-      },
-    ]);
-		
+    const ctx = create_parser_context(scan('$+'));
     const token = consume_token(ctx);
     expect(() => get_infix_parselet(token, ctx)).toThrow('Invalid or unexpected token "$".');
   });

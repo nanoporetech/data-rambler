@@ -19,10 +19,9 @@ describe('expression', () => {
     expect(() => parse_prefix_expression(ctx)).toThrow('Invalid or unexpected token "}".');
   });
   it('parse_infix_expression returns null when no tokens are available', () => {
-    const ctx = simple_create_context('');
-    const pos = { column: 0, row: 0 };
+    const ctx = simple_create_context('0');
     // need a dummy expression for parse infix
-    const left: Expression = { type: 'json_expression', value: 0, start: pos, end: pos };
+    const left: Expression = { type: 'json_expression', value: 0, fragment: ctx.fragment };
     expect(parse_infix_expression(ctx, left, 0)).toEqual(null);
   });
 });

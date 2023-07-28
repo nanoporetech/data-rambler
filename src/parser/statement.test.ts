@@ -1,6 +1,6 @@
 import { consume_token, create_parser_context } from './parser_context';
 import type { ParserContext } from './parser_context.type';
-import { end_statement, parse_statement, should_end_statement } from './statement';
+import { end_statement, parse_statement } from './statement';
 import { scan } from '../scanner/scanner';
 
 function simple_create_context (source: string): ParserContext {
@@ -19,9 +19,5 @@ describe('statement', () => {
     expect(() => {
       end_statement(ctx);
     }).toThrow('Invalid or unexpected token "0".');
-  });
-  it('semicolon indicates should end statement', () => {
-    const ctx = simple_create_context(';');
-    expect(should_end_statement(ctx)).toEqual(true);
   });
 });
